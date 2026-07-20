@@ -1,0 +1,545 @@
+<title>开发部群聊 · 交互原型 v2</title>
+<style>
+:root{
+  --bg:#F0EEE6; --panel:#FBFAF6; --panel2:#F0EDE4; --chip:#FFFFFF;
+  --line:#E7E3D8; --line2:#D6D1C2;
+  --ink:#2A2621; --ink2:#6C6558; --ink3:#948C7D;
+  --hover:rgba(80,66,44,.06); --hover2:rgba(80,66,44,.09);
+  --accent:#BE6242; --on-accent:#FFFFFF; --accent-soft:#F5E8DF; --accent-ink:#96502F; --accent-line:#E9D3C4;
+  --me:#3161D1; --on-me:#FFFFFF; --me-soft:#E9EFFB; --me-ink:#274FA8; --me-line:#D6E0F6;
+  --ok:#5F8455; --ok-soft:#E9EFE2; --warn:#9C711F; --warn-soft:#F5EDD8; --danger:#BA4F3B; --danger-soft:#F7E6DF;
+  --zhu:#7A5BBE; --zhu-soft:#EFEAF8; --shu:#2F8266; --shu-soft:#E2EFE7; --mei:#BC5B7D; --mei-soft:#F8E9EF;
+  --sys:#968E7E;
+  --scrim:rgba(48,41,31,.38);
+  --sh-card:0 1px 2px rgba(60,50,35,.05), 0 2px 8px rgba(60,50,35,.04);
+  --sh-panel:0 1px 3px rgba(60,50,35,.04), 0 10px 32px rgba(60,50,35,.07);
+  --sh-pop:0 4px 14px rgba(60,50,35,.09), 0 20px 52px rgba(60,50,35,.16);
+  --serif:Georgia,"Times New Roman","Source Han Serif SC","Songti SC","SimSun",serif;
+  --r:12px; --rb:14px;
+}
+:root[data-theme="dark"]{
+  --bg:#201E1A; --panel:#292724; --panel2:#34312B; --chip:#2F2C28;
+  --line:#3B372F; --line2:#4D473C;
+  --ink:#ECE8DF; --ink2:#ACA495; --ink3:#7F786A;
+  --hover:rgba(255,255,255,.05); --hover2:rgba(255,255,255,.08);
+  --accent:#CE8560; --on-accent:#281306; --accent-soft:#3C2D22; --accent-ink:#E3AA82; --accent-line:#54402F;
+  --me:#6E93EF; --on-me:#0E1524; --me-soft:#243044; --me-ink:#9FB8F5; --me-line:#33415C;
+  --ok:#8CB27E; --ok-soft:#283226; --warn:#D3A45C; --warn-soft:#393021; --danger:#DE7E64; --danger-soft:#3D2722;
+  --zhu:#AE92E2; --zhu-soft:#342D46; --shu:#6EB897; --shu-soft:#25362E; --mei:#DA8CA7; --mei-soft:#3C2A32;
+  --sys:#847C6D;
+  --scrim:rgba(0,0,0,.52);
+  --sh-card:0 1px 2px rgba(0,0,0,.35), 0 2px 8px rgba(0,0,0,.28);
+  --sh-panel:0 1px 3px rgba(0,0,0,.4), 0 12px 36px rgba(0,0,0,.45);
+  --sh-pop:0 6px 18px rgba(0,0,0,.5), 0 24px 60px rgba(0,0,0,.55);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme]){
+    --bg:#201E1A; --panel:#292724; --panel2:#34312B; --chip:#2F2C28;
+    --line:#3B372F; --line2:#4D473C;
+    --ink:#ECE8DF; --ink2:#ACA495; --ink3:#7F786A;
+    --hover:rgba(255,255,255,.05); --hover2:rgba(255,255,255,.08);
+    --accent:#CE8560; --on-accent:#281306; --accent-soft:#3C2D22; --accent-ink:#E3AA82; --accent-line:#54402F;
+    --me:#6E93EF; --on-me:#0E1524; --me-soft:#243044; --me-ink:#9FB8F5; --me-line:#33415C;
+    --ok:#8CB27E; --ok-soft:#283226; --warn:#D3A45C; --warn-soft:#393021; --danger:#DE7E64; --danger-soft:#3D2722;
+    --zhu:#AE92E2; --zhu-soft:#342D46; --shu:#6EB897; --shu-soft:#25362E; --mei:#DA8CA7; --mei-soft:#3C2A32;
+    --sys:#847C6D;
+    --scrim:rgba(0,0,0,.52);
+    --sh-card:0 1px 2px rgba(0,0,0,.35), 0 2px 8px rgba(0,0,0,.28);
+    --sh-panel:0 1px 3px rgba(0,0,0,.4), 0 12px 36px rgba(0,0,0,.45);
+    --sh-pop:0 6px 18px rgba(0,0,0,.5), 0 24px 60px rgba(0,0,0,.55);
+  }
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{height:100%;}
+body{
+  font-family:"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  background:var(--bg); color:var(--ink); font-size:14px; line-height:1.6;
+  display:flex; flex-direction:column; overflow:hidden;
+}
+a{color:var(--accent-ink);} a:hover{color:var(--accent);}
+button{font:inherit; color:inherit; background:none; border:none; cursor:pointer;}
+button:focus-visible, [tabindex]:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:6px;}
+.side,.stream,.dbody{scrollbar-width:thin; scrollbar-color:var(--line2) transparent;}
+::-webkit-scrollbar{width:10px; height:10px;}
+::-webkit-scrollbar-thumb{background:var(--line2); border-radius:6px; border:3px solid transparent; background-clip:content-box;}
+::-webkit-scrollbar-track{background:transparent;}
+.app{flex:1; min-height:0; display:flex; gap:12px; padding:2px 12px 12px; overflow:hidden;}
+
+.rail{width:74px; flex-shrink:0; position:relative; display:flex; flex-direction:column; align-items:center; gap:8px; padding:8px 0 4px;}
+.rail .rbtn{position:relative; z-index:1; width:64px; height:30px; border-radius:9px; display:flex; align-items:center; justify-content:center; color:var(--ink3); font-size:14px;}
+.rail .rbtn:hover{color:var(--ink2);}
+.rail .rbtn.on{color:var(--accent-ink); font-weight:500;}
+.glide{position:absolute; opacity:0; pointer-events:none; z-index:0; transition:top .22s cubic-bezier(.3,.8,.3,1), left .22s cubic-bezier(.3,.8,.3,1), width .18s ease, height .18s ease, opacity .16s ease;}
+.rail .glide{border-radius:9px; background:var(--panel); border:1px solid var(--line); box-shadow:var(--sh-card);}
+.side .glide{border-radius:10px; background:var(--panel2); border:1px solid var(--line);}
+.rail .spacer{flex:1;}
+
+.side{width:224px; flex-shrink:0; position:relative; background:var(--panel); border:1px solid var(--line); border-radius:16px; box-shadow:var(--sh-panel); display:flex; flex-direction:column; overflow-y:auto;}
+.side .head{padding:8px; border-bottom:1px solid var(--line);}
+.teambtn{display:block; width:100%; text-align:left; padding:7px 9px; border-radius:10px; position:relative; z-index:1;}
+.teambtn .trow{font-weight:600; font-size:15px; font-family:var(--serif); display:flex; align-items:center; gap:5px;}
+.teambtn .trow .chev{width:14px; height:14px; color:var(--ink3); margin-top:2px; flex-shrink:0;}
+.teambtn .sub{display:block; font-size:11.5px; color:var(--ink3); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.sec{padding:12px 8px 6px;}
+.sec + .sec{border-top:1px solid var(--line); margin-top:6px;}
+.sec .label{display:flex; align-items:baseline; gap:4px; font-size:10.5px; color:var(--ink3); padding:0 10px 6px; letter-spacing:.08em; white-space:nowrap;}
+.sec .label .lnote{letter-spacing:.02em; opacity:.85; overflow:hidden; text-overflow:ellipsis; min-width:0;}
+.sec .label .lcount{margin-left:auto; background:var(--panel2); border-radius:99px; padding:0 6px; font-size:10px; letter-spacing:0; line-height:1.6;}
+.chan{display:flex; align-items:center; gap:9px; width:100%; text-align:left; padding:7px 10px; border-radius:10px; color:var(--ink2); font-size:13.5px; position:relative; z-index:1;}
+.chan.on{color:var(--ink); font-weight:500;}
+.chan .cic{width:16px; height:16px; flex-shrink:0; color:var(--ink3);}
+.chan.on .cic{color:var(--accent-ink);}
+.chan .nm{flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.chan .tag2{font-size:10px; color:var(--ink3); background:var(--panel2); border-radius:99px; padding:1px 7px; flex-shrink:0;}
+.chan.on .tag2{background:var(--chip); color:var(--accent-ink);}
+.chan .unread{min-width:17px; height:17px; border-radius:9px; background:var(--accent); color:var(--on-accent); font-size:11px; display:flex; align-items:center; justify-content:center; padding:0 5px;}
+.mem{display:flex; align-items:center; gap:9px; width:100%; text-align:left; padding:7px 10px; border-radius:10px; position:relative; z-index:1;}
+.avw{position:relative; flex-shrink:0; width:28px; height:28px;}
+.mem .av{width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12.5px; font-weight:500;}
+.pdot{position:absolute; right:-2px; bottom:-2px; width:10px; height:10px; border-radius:50%; border:2px solid var(--panel); background:var(--line2);}
+.pdot.busy{background:var(--ok);}
+.pdot.idle{background:var(--line2);}
+.mem .info{flex:1; min-width:0; display:flex; flex-direction:column;}
+.mem .nm{font-size:13px; font-weight:500; line-height:1.35;}
+.mem .st{font-size:11px; color:var(--ink3); line-height:1.3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.mctx{flex-shrink:0; display:flex; align-items:center;}
+
+.main{flex:1; min-width:0; display:flex; flex-direction:column; background:var(--panel); border:1px solid var(--line); border-radius:16px; box-shadow:var(--sh-panel); overflow:hidden;}
+.chead{padding:12px 16px 8px; display:flex; align-items:center; gap:10px;}
+.chead .t{font-weight:600; font-size:15.5px; font-family:var(--serif); white-space:nowrap;}
+.chead .d{font-size:12px; color:var(--ink3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; flex-shrink:1;}
+.pill{font-size:11.5px; padding:3px 10px; border-radius:99px; background:var(--ok-soft); color:var(--ok); cursor:help; white-space:nowrap; flex-shrink:0;}
+.pill.paused{background:var(--warn-soft); color:var(--warn);}
+.chead .grow{flex:1;}
+.chead .hbtn{color:var(--ink3); font-size:15px; padding:4px 8px; border-radius:8px;}
+.chead .hbtn:hover{background:var(--hover);}
+
+.stream{flex:1; overflow-y:auto; padding:18px max(22px, calc((100% - 840px)/2)) 10px; display:flex; flex-direction:column; gap:14px;
+  -webkit-mask-image:linear-gradient(180deg, transparent 0, #000 48px, #000 calc(100% - 36px), transparent 100%);
+  mask-image:linear-gradient(180deg, transparent 0, #000 48px, #000 calc(100% - 36px), transparent 100%);}
+.sysline{text-align:center; font-size:11.5px; color:var(--sys); display:flex; align-items:center; gap:10px; justify-content:center;}
+.sysline::before,.sysline::after{content:""; height:1px; background:var(--line); flex:1; max-width:120px;}
+.snap{display:flex; justify-content:center;}
+.snap .card{font-size:11.5px; color:var(--sys); display:flex; align-items:center; gap:8px; white-space:nowrap;}
+.snap .card b{font-weight:500;}
+.snap .act{flex-shrink:0; font-size:11.5px; color:var(--accent-ink); text-decoration:underline dotted; text-underline-offset:3px; padding:0 2px;}
+.snap .act:hover{color:var(--accent);}
+
+.row{display:flex; gap:10px; max-width:72%;}
+.row.me{align-self:flex-end; flex-direction:row-reverse;}
+.av{width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:500; flex-shrink:0; cursor:pointer;}
+.av.boss{background:var(--me); color:var(--on-me); cursor:default;}
+.bwrap{min-width:0;}
+.meta{font-size:11.5px; color:var(--ink3); margin:0 4px 3px; display:flex; gap:6px; align-items:center;}
+.row.me .meta{justify-content:flex-end;}
+.tag{font-size:10.5px; padding:1px 7px; border-radius:99px; background:var(--panel2); color:var(--ink3);}
+.tag.dm{background:var(--warn-soft); color:var(--warn);}
+.bub{background:var(--chip); border-radius:4px var(--rb) var(--rb) var(--rb); padding:9px 13px; font-size:14px; white-space:pre-wrap; word-break:break-word;}
+.row.me .bub{background:var(--me-soft); color:var(--ink); border-radius:var(--rb) 4px var(--rb) var(--rb);}
+.bub .at{color:var(--accent-ink); background:var(--accent-soft); border-radius:5px; padding:0 4px; font-weight:500;}
+.row.me .bub .at{color:var(--me-ink); background:var(--chip);}
+.quote{border-left:2px solid var(--line2); padding:2px 10px; margin-bottom:7px; font-size:12.5px; color:var(--ink2);}
+
+.receipt{align-self:flex-end; max-width:78%; font-size:11.5px; color:var(--ink3); margin-top:-8px; padding-right:46px;}
+.receipt button{color:var(--ink3); text-decoration:underline dotted; font-size:11.5px;}
+.receipt .detail{display:none; margin-top:4px; background:var(--chip); border:1px solid var(--line); border-radius:10px; padding:6px 10px; text-align:left; box-shadow:var(--sh-card);}
+.receipt.open .detail{display:block;}
+
+.acard{background:var(--chip); border:1px solid var(--line); border-radius:var(--rb); padding:12px 14px; font-size:13.5px; max-width:520px; box-shadow:var(--sh-card);}
+.acard .h{font-weight:600; font-size:13px; display:flex; gap:8px; align-items:center;}
+.acard .cmd{font-family:Consolas,Menlo,monospace; font-size:12.5px; background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:5px 9px; margin:8px 0; overflow-x:auto;}
+.acard .btns{display:flex; gap:8px;}
+.btn{font-size:12.5px; padding:5px 14px; border-radius:9px; border:1px solid var(--line2); color:var(--ink2); white-space:nowrap; flex-shrink:0;}
+.btn:hover{background:var(--hover);}
+.btn.pri{background:var(--accent); color:var(--on-accent); border-color:transparent; font-weight:500;}
+.btn.pri:hover{filter:brightness(.95);}
+.btn.done{background:var(--ok-soft); color:var(--ok); border-color:transparent; pointer-events:none;}
+
+.fcard{display:flex; align-items:center; gap:11px; background:var(--chip); border:1px solid var(--line); border-radius:var(--rb); padding:10px 14px; max-width:420px; box-shadow:var(--sh-card);}
+.fcard .fic{width:36px; height:36px; border-radius:10px; background:var(--accent-soft); color:var(--accent-ink); display:flex; align-items:center; justify-content:center; font-size:16px;}
+.fcard .fp{font-family:Consolas,Menlo,monospace; font-size:12.5px;}
+.fcard .fs{font-size:11.5px; color:var(--ink3);}
+.fcard .open{margin-left:auto; font-size:12px; color:var(--accent-ink);}
+
+.imsg{max-width:300px;}
+.imsg .ph{height:150px; border-radius:10px; border:1px solid var(--line); background:
+  repeating-linear-gradient(45deg,var(--panel2) 0 14px,var(--chip) 14px 28px);
+  display:flex; align-items:center; justify-content:center; color:var(--ink3); font-size:12px; flex-direction:column; gap:6px;}
+.imsg .cap{font-size:11.5px; color:var(--ink3); margin-top:4px; font-family:Consolas,Menlo,monospace;}
+
+.sysalert{align-self:center; text-align:center; max-width:560px; font-size:11.5px; color:var(--sys); line-height:1.8;}
+.sysalert .ttl{color:var(--danger); font-weight:500; white-space:nowrap;}
+.sysalert .ttl .ico{vertical-align:-2.5px;}
+.sysalert b{font-weight:500; color:var(--ink2);}
+.sysalert code{font-family:Consolas,Menlo,monospace; background:var(--panel2); border-radius:5px; padding:0 5px; font-size:11px;}
+.sysalert .act{font-size:11.5px; color:var(--accent-ink); text-decoration:underline dotted; text-underline-offset:3px; padding:0 2px; margin:0 6px;}
+.sysalert .act:hover{color:var(--accent);}
+
+.typing{display:flex; gap:10px; align-items:center; font-size:12px;}
+.typing .shim{background:linear-gradient(90deg, var(--ink3) 25%, var(--ink) 50%, var(--ink3) 75%); background-size:200% 100%; -webkit-background-clip:text; background-clip:text; color:transparent; animation:shine 1.8s linear infinite;}
+@keyframes shine{0%{background-position:180% 0} 100%{background-position:-80% 0}}
+@media (prefers-reduced-motion: reduce){ .typing .shim{animation:none; background:none; color:var(--ink3);} .drawer{transition:none;} .glide{transition:none;} }
+
+.composer{padding:0 max(16px, calc((100% - 840px)/2)) 14px;}
+.cbox{background:var(--chip); border:1px solid var(--line2); border-radius:18px; box-shadow:var(--sh-card); padding:10px 12px 8px 14px; transition:border-color .15s ease, box-shadow .15s ease;}
+.cbox:focus-within{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft), var(--sh-card);}
+.input{display:block; width:100%; background:none; border:none; padding:3px 2px 10px 0; font:inherit; color:var(--ink); resize:none; max-height:140px; min-height:34px;}
+.input:focus{outline:none;}
+.input::placeholder{color:var(--ink3);}
+.crow{display:flex; align-items:center; gap:5px;}
+.crow .grow{flex:1;}
+.ibtn{width:30px; height:30px; border-radius:99px; display:flex; align-items:center; justify-content:center; color:var(--ink3); flex-shrink:0;}
+.ibtn:hover{background:var(--hover); color:var(--ink2);}
+.ibtn.fr{border:1px solid var(--line2);}
+.target{display:flex; align-items:center; gap:3px; font-size:12px; color:var(--ink3); padding:4px 9px; border-radius:99px; min-width:0; max-width:58%;}
+.target:hover{background:var(--hover); color:var(--ink2);}
+.target .tp{white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.target .chev{width:13px; height:13px; flex-shrink:0; margin-top:1px;}
+.send{width:32px; height:32px; border-radius:11px; background:var(--accent); color:var(--on-accent); display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:var(--sh-card);}
+.send:hover{filter:brightness(.95);}
+.send .ico{width:16px; height:16px; stroke-width:2.3;}
+
+.drawer{flex-shrink:0; width:0; margin-left:-12px; background:var(--panel); border:1px solid transparent; border-radius:16px; overflow:hidden; opacity:0; position:relative; transition:width .28s cubic-bezier(.2,.7,.3,1), margin-left .28s cubic-bezier(.2,.7,.3,1), opacity .18s ease, border-color .18s ease, box-shadow .28s ease;}
+.drawer.open{width:292px; margin-left:0; opacity:1; border-color:var(--line); box-shadow:var(--sh-panel);}
+.dbody{width:292px; height:100%; overflow-y:auto; padding:16px 18px;}
+.drawer .close{position:absolute; top:10px; right:10px; z-index:2; color:var(--ink3); font-size:16px; padding:4px 8px; border-radius:8px;}
+.drawer .close:hover{background:var(--hover);}
+.dhead{display:flex; gap:12px; align-items:center; margin-bottom:14px;}
+.dhead .av{width:46px; height:46px; font-size:17px;}
+.dhead .nm{font-weight:600; font-size:16px; font-family:var(--serif);}
+.dhead .en{font-size:12px; color:var(--ink3);}
+.dsec{border-top:1px solid var(--line); padding:13px 0;}
+.dsec .lb{font-size:11px; color:var(--ink3); letter-spacing:.06em; margin-bottom:9px;}
+.ctxwrap{display:flex; gap:14px; align-items:center;}
+.ring{transform:rotate(-90deg);}
+.ring .track{stroke:var(--panel2);}
+.ring .val{stroke:var(--ok); transition:stroke-dasharray .5s ease;}
+.ctxnum{font-size:20px; font-weight:600; font-variant-numeric:tabular-nums;}
+.ctxnum small{font-size:11px; color:var(--ink3); font-weight:400; display:block;}
+.mrow{display:flex; align-items:center; justify-content:space-between; font-size:13px; padding:5px 0;}
+.mrow .v{color:var(--ink2); display:flex; gap:6px; align-items:center;}
+.quota{height:5px; border-radius:3px; background:var(--panel2); overflow:hidden; margin-top:5px;}
+.quota i{display:block; height:100%; background:var(--ok); border-radius:3px;}
+.dbtns{display:flex; flex-wrap:wrap; gap:8px;}
+
+.modal-bg{position:fixed; inset:0; background:var(--scrim); backdrop-filter:blur(2px); z-index:60; display:none; align-items:center; justify-content:center;}
+.modal-bg.open{display:flex;}
+.modal{background:var(--panel); border-radius:16px; width:420px; max-width:92vw; padding:20px 22px; border:1px solid var(--line); box-shadow:var(--sh-pop);}
+.modal h3{font-size:15.5px; margin-bottom:10px; font-family:var(--serif);}
+.modal p{font-size:13px; color:var(--ink2); margin-bottom:8px;}
+.modal ul{margin:0 0 12px 18px; font-size:12.5px; color:var(--ink2); font-family:Consolas,Menlo,monospace;}
+.modal .note{font-size:12px; background:var(--accent-soft); color:var(--accent-ink); border-radius:10px; padding:8px 11px; margin-bottom:14px;}
+.modal .btns{display:flex; justify-content:flex-end; gap:8px;}
+
+.toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--ink); color:var(--panel); font-size:13px; border-radius:99px; padding:8px 18px; z-index:80; opacity:0; transition:opacity .2s; pointer-events:none; max-width:80vw; box-shadow:var(--sh-pop);}
+.toast.show{opacity:1;}
+
+.qpop{position:fixed; z-index:50; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:6px; display:none; box-shadow:var(--sh-pop); width:280px;}
+.qpop.open{display:block;}
+.qpop button{display:block; width:100%; text-align:left; font-size:13px; padding:7px 10px; border-radius:8px; color:var(--ink2);}
+.qpop button:hover{background:var(--hover);}
+
+.hint{color:var(--ink3); font-size:12px; text-align:center; padding:6px 10px;}
+.ico{width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; vertical-align:-4px;}
+@media (max-width:900px){ .side{display:none;} .rail{display:none;} .row{max-width:94%;} .app{padding:0 8px 8px; gap:8px;} .drawer{position:fixed; top:8px; right:8px; bottom:8px; height:auto; margin-left:0; z-index:40;} .drawer.open{width:min(300px, 88vw); box-shadow:var(--sh-pop);} }
+</style>
+
+<svg style="display:none" aria-hidden="true">
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></symbol>
+  <symbol id="i-clip" viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></symbol>
+  <symbol id="i-zap" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
+  <symbol id="i-hash" viewBox="0 0 24 24"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></symbol>
+  <symbol id="i-msg" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></symbol>
+</svg>
+<div class="hint">交互原型 v2 · 假数据演示 — 可点：左侧频道与成员、批准卡按钮、快照行的「回滚」、回执展开、⚡快捷指令、发送消息、右上🌓换肤</div>
+<div class="app">
+  <nav class="rail" aria-label="工作台导航">
+    <span class="glide" id="railGlide" aria-hidden="true"></span>
+    <button class="rbtn on" title="游戏开发部">游</button>
+    <button class="rbtn" title="简历工作室（示意）" onclick="toast('原型仅演示「游戏开发部」')">简</button>
+    <div class="spacer"></div>
+    <button class="rbtn" id="themeBtn" title="切换深浅色"><svg class="ico"><use href="#i-moon"/></svg></button>
+    <button class="rbtn" title="设置（示意）" onclick="toast('设置页在 v1 里包含：引擎命令、通知声音、主题')"><svg class="ico"><use href="#i-sliders"/></svg></button>
+  </nav>
+
+  <aside class="side" aria-label="频道与成员" data-comment-anchor="09e7afee1b-aside">
+    <span class="glide" aria-hidden="true"></span>
+    <div class="head">
+      <button class="teambtn" onclick="toast('工作区菜单：重命名、成员管理、切换团队（示意）')">
+        <span class="trow">游戏开发部 <svg class="ico chev"><use href="#i-chev"/></svg></span>
+        <span class="sub">C:\projects\demo-team · 3 名成员在岗</span>
+      </button>
+    </div>
+    <div class="sec">
+      <div class="label">频道</div>
+      <button class="chan on" data-ch="group"><svg class="ico cic"><use href="#i-hash"/></svg><span class="nm">群聊</span><span class="tag2">全员上下文</span></button>
+    </div>
+    <div class="sec">
+      <div class="label">私聊<span class="lnote">· 只进双方上下文</span></div>
+      <button class="chan" data-ch="dm-zhu"><svg class="ico cic"><use href="#i-msg"/></svg><span class="nm">主策划</span><span class="unread">2</span></button>
+      <button class="chan" data-ch="dm-shu"><svg class="ico cic"><use href="#i-msg"/></svg><span class="nm">数值程序</span></button>
+      <button class="chan" data-ch="dm-mei"><svg class="ico cic"><use href="#i-msg"/></svg><span class="nm">美术</span></button>
+    </div>
+    <div class="sec">
+      <div class="label">旁听<span class="lnote">· 同事私聊，你可插话</span></div>
+      <button class="chan" data-ch="dm-zm"><svg class="ico cic"><use href="#i-eye"/></svg><span class="nm">主策划 ⇄ 美术</span><span class="unread">1</span></button>
+    </div>
+    <div class="sec">
+      <div class="label">成员<span class="lcount">3</span></div>
+      <button class="mem" data-mem="zhu" title="干活中 · 上下文占用 62%">
+        <span class="avw"><span class="av" style="background:var(--zhu-soft); color:var(--zhu)">策</span><span class="pdot busy"></span></span>
+        <span class="info"><span class="nm">主策划</span><span class="st">Claude · Opus 4.x</span></span>
+        <span class="mctx"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="none" stroke="var(--panel2)" stroke-width="2.6"></circle><circle cx="9" cy="9" r="7" fill="none" stroke="var(--warn)" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="27.3 44" transform="rotate(-90 9 9)"></circle></svg></span>
+      </button>
+      <button class="mem" data-mem="shu" title="干活中 · 上下文占用 31%">
+        <span class="avw"><span class="av" style="background:var(--shu-soft); color:var(--shu)">数</span><span class="pdot busy"></span></span>
+        <span class="info"><span class="nm">数值程序</span><span class="st">Codex · GPT-5.x</span></span>
+        <span class="mctx"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="none" stroke="var(--panel2)" stroke-width="2.6"></circle><circle cx="9" cy="9" r="7" fill="none" stroke="var(--ok)" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="13.6 44" transform="rotate(-90 9 9)"></circle></svg></span>
+      </button>
+      <button class="mem" data-mem="mei" title="空闲 · 上下文占用 18%">
+        <span class="avw"><span class="av" style="background:var(--mei-soft); color:var(--mei)">美</span><span class="pdot idle"></span></span>
+        <span class="info"><span class="nm">美术</span><span class="st">Gemini · 3.1 Pro</span></span>
+        <span class="mctx"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="none" stroke="var(--panel2)" stroke-width="2.6"></circle><circle cx="9" cy="9" r="7" fill="none" stroke="var(--ok)" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="7.9 44" transform="rotate(-90 9 9)"></circle></svg></span>
+      </button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="chead">
+      <span class="t" id="chTitle">群聊</span>
+      <span class="d" id="chDesc">发言广播给全员，@ 只是点名提醒</span>
+      <span class="pill" id="fusePill" title="防止成员之间无限互聊烧额度：连续 6 条无老板发言将自动暂停，等你放行">自由讨论 · 熔断剩 4 轮</span>
+      <span class="grow"></span>
+      <button class="hbtn" title="搜索聊天记录（v1 含）" onclick="toast('搜索：全文检索所有频道记录')"><svg class="ico"><use href="#i-search"/></svg></button>
+    </header>
+    <div class="stream" id="stream" aria-live="polite"></div>
+    <div class="composer" data-comment-anchor="d6a38973c3-div">
+      <div class="cbox">
+        <textarea class="input" id="input" rows="1" placeholder="发消息，@ 可点名，回车发送"></textarea>
+        <div class="crow">
+          <button class="ibtn fr" title="附件：把文件路径附给消息" onclick="toast('选择文件后，会把文件以路径形式附给这条消息')"><svg class="ico" style="width:16px;height:16px"><use href="#i-plus"/></svg></button>
+          <button class="ibtn" id="quickBtn" title="快捷指令收藏"><svg class="ico" style="width:16px;height:16px"><use href="#i-zap"/></svg></button>
+          <span class="grow"></span>
+          <button class="target" id="target" title="发送目标跟随当前频道" onclick="toast('发送目标跟随当前频道：在左侧切换频道即可改变')"><span class="tp" id="targetPill">群聊 · 进入全员上下文</span><svg class="ico chev"><use href="#i-chev"/></svg></button>
+          <button class="send" id="sendBtn" title="发送（回车）"><svg class="ico"><use href="#i-up"/></svg></button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div class="drawer" id="drawer" aria-label="成员档案" data-comment-anchor="d145a9bec4-div">
+  <button class="close" id="drawerClose" aria-label="关闭">✕</button>
+  <div class="dbody">
+  <div class="dhead">
+    <span class="av" id="dAv"></span>
+    <span><span class="nm" id="dName"></span><br /><span class="en" id="dEngine"></span></span>
+  </div>
+  <div class="dsec">
+    <div class="lb">上下文占用</div>
+    <div class="ctxwrap">
+      <svg class="ring" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true">
+        <circle class="track" cx="32" cy="32" r="27" fill="none" stroke-width="7"></circle>
+        <circle class="val" id="ringVal" cx="32" cy="32" r="27" fill="none" stroke-width="7" stroke-linecap="round" stroke-dasharray="105 170"></circle>
+      </svg>
+      <div class="ctxnum"><span id="ctxPct">62%</span><small>约 124k / 200k tokens</small></div>
+    </div>
+    <div style="margin-top:10px"><button class="btn" id="compactBtn">压缩上下文</button> <span style="font-size:11.5px; color:var(--ink3)">建议在 80% 前压缩</span></div>
+  </div>
+  <div class="dsec">
+    <div class="lb">引擎与模型</div>
+    <div class="mrow"><span>当前模型</span><span class="v" id="dModel"></span></div>
+    <div class="mrow"><span>换模型</span><span class="v"><button class="btn" onclick="toast('可靠做法：带新模型参数重启工位（会话可恢复）')">选择并重启 ▾</button></span></div>
+    <div class="mrow"><span>今日额度</span><span class="v" style="flex:1; max-width:130px"><span class="quota" style="flex:1"><i style="width:44%"></i></span></span></div>
+  </div>
+  <div class="dsec">
+    <div class="lb">操作</div>
+    <div class="dbtns">
+      <button class="btn" id="dDm">发私聊</button>
+      <button class="btn" onclick="toast('弹出该成员的原始终端画面（气泡翻译不准时看这里）')">看原始终端</button>
+      <button class="btn" onclick="toast('暂停：本轮完成后不再接新消息')">暂停</button>
+      <button class="btn" onclick="toast('极端情况用：关闭当前会话换个新脑，记忆清零，用会议纪要喂回背景')">重开会话</button>
+    </div>
+  </div>
+  </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal" role="dialog" aria-label="回滚确认">
+    <h3>撤销「数值程序」这一轮的改动？</h3>
+    <p>只反做这一轮碰过的 2 个文件，其他成员此后的改动不受影响：</p>
+    <ul>
+      <li>sandbox\sim_signin.py（新增 → 删除）</li>
+      <li>docs\签到奖励表_v1.csv（新增 → 删除）</li>
+    </ul>
+    <div class="note">只恢复文件，不清除记忆——完成后自动在群里广播更正声明。若这轮文件与后续某轮有重叠，这里会提示你改用「回到此刻」整体回退，或交主策划手工处理。</div>
+    <div class="btns">
+      <button class="btn" id="mCancel">取消</button>
+      <button class="btn pri" id="mOk">确认撤销并广播</button>
+    </div>
+  </div>
+</div>
+
+<div class="qpop" id="qpop">
+  <button data-q="汇报一下各自手头进度，一句话即可。">全员进度汇报</button>
+  <button data-q="把今天的结论整理成会议纪要存到 docs\，并在群里贴出路径。">生成会议纪要</button>
+  <button data-q="暂停当前工作，等待我的下一步指示。">全员暂停待命</button>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const M = {
+  zhu:{name:"主策划", av:"策", c:"var(--zhu)", cs:"var(--zhu-soft)", engine:"Claude Code · 订阅", model:"Opus 4.x"},
+  shu:{name:"数值程序", av:"数", c:"var(--shu)", cs:"var(--shu-soft)", engine:"Codex · ChatGPT Plus", model:"GPT-5.x codex"},
+  mei:{name:"美术", av:"美", c:"var(--mei)", cs:"var(--mei-soft)", engine:"Antigravity · Gemini Pro", model:"Gemini 3.1 Pro"}
+};
+const CH = {
+  group:{title:"群聊", desc:"发言广播给全员，@ 只是点名提醒", pill:"群聊 · 进入全员上下文"},
+  "dm-zhu":{title:"私聊 · 主策划", desc:"只进你和主策划的上下文", pill:"私聊主策划 · 其他成员不可见"},
+  "dm-shu":{title:"私聊 · 数值程序", desc:"只进你和数值程序的上下文", pill:"私聊数值程序 · 其他成员不可见"},
+  "dm-mei":{title:"私聊 · 美术", desc:"只进你和美术的上下文", pill:"私聊美术 · 其他成员不可见"},
+  "dm-zm":{title:"主策划 ⇄ 美术", desc:"同事私聊 · 你在旁听，发言将以老板身份插入", pill:"旁听中 · 发言即插话"}
+};
+const msgs = {
+  group:[
+    {t:"sys", x:"今天 09:30 · 全员上岗"},
+    {t:"snap", n:"13", x:"老板发言前自动快照"},
+    {t:"me", x:"宗门签到功能，各位出个方案。玩法 <at>@主策划</at> 牵头，数值和视觉分头准备。"},
+    {t:"receipt", x:"数值程序、美术 已收到", d:"数值程序：[收到] 开始整理签到奖励模型。\n美术：[收到] 先出两版风格小样。"},
+    {t:"agent", m:"zhu", x:"收到。我的拆法：签到入口挂在宗门大殿；七日一循环、月度大奖；断签可用宗门贡献补签一次。数值细节交给数值程序，面板视觉交给美术，晚点我汇总完整案。"},
+    {t:"approve", m:"shu", cmd:"python sandbox\\sim_signin.py --days 90", x:"数值程序 请求运行模拟脚本（工作区内）"},
+    {t:"snap", n:"14", x:"数值程序 完工 · 改动 2 个文件", roll:true},
+    {t:"agent", m:"shu", x:"90 天模拟跑完：七日循环 + 第 30 天大奖的留存曲线最平滑，断签补签定价 200 贡献不破坏经济。奖励表在 ↓"},
+    {t:"file", m:"shu", p:"docs\\签到奖励表_v1.csv", s:"产出文件 · 点击打开"},
+    {t:"img", m:"mei", cap:"assets\\签到面板_概念图_0707.png", x:"面板概念图：水墨卷轴底 + 金色印章做已签标记，两版里我推荐这版。"},
+    {t:"confl", a:"数值程序", b:"美术", f:"assets\\ui.css", x:"后者的修改覆盖了前者（10:42 与 10:47）。两个版本都在快照里，没有丢失。"},
+    {t:"typing", m:"zhu"}
+  ],
+  "dm-zhu":[
+    {t:"sys", x:"这里的内容只进你和主策划的上下文"},
+    {t:"me", x:"跟你单独说：签到奖励别太厚，我不想游戏变成打卡软件。"},
+    {t:"agent", m:"zhu", x:"明白，我会把大奖压到「惊喜感」而不是「必需品」的量级，这个倾向我不在群里明说，落在方案里。"},
+    {t:"agent", m:"zhu", x:"另外提醒：美术的概念图很好，但字体版权要确认，我私下先问她要字体来源。"}
+  ],
+  "dm-shu":[
+    {t:"sys", x:"这里的内容只进你和数值程序的上下文"},
+    {t:"me", x:"上次那个成长曲线的思路挺好，签到这次也按那个手感来。"},
+    {t:"agent", m:"shu", x:"好，沿用「前期陡后期缓」的收益节奏，我在模拟里加一组对照。"}
+  ],
+  "dm-mei":[
+    {t:"sys", x:"这里的内容只进你和美术的上下文"}
+  ],
+  "dm-zm":[
+    {t:"sys", x:"同事私聊 · 你在旁听"},
+    {t:"agent", m:"zhu", x:"概念图里的书法字体是哪来的？商用授权要干净。"},
+    {t:"agent", m:"mei", x:"是我生成的图，字是画出来的不是字体文件，无版权问题。落地时正文我会换思源宋体。"}
+  ]
+};
+let cur = "group";
+const $ = s => document.querySelector(s);
+const stream = $("#stream");
+
+function esc(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/&lt;at&gt;/g,'<span class="at">').replace(/&lt;\/at&gt;/g,"</span>"); }
+function avatar(m, extra){ const o = M[m]; return `<span class="av" style="background:${o.cs}; color:${o.c}" data-mem="${m}" title="查看${o.name}档案">${o.av}</span>`; }
+
+function render(){
+  const list = msgs[cur]; let h = "";
+  for(const g of list){
+    if(g.t==="sys") h += `<div class="sysline">${g.x}</div>`;
+    else if(g.t==="snap") h += `<div class="snap"><span class="card"><svg class="ico" style="width:14px;height:14px"><use href="#i-camera"/></svg> 快照 #${g.n} · ${g.x}${g.roll?` <button class="act" data-roll="${g.n}">撤销这轮</button><button class="act" data-reset="${g.n}" style="color:var(--ink3)">回到此刻</button>`:""}</span></div>`;
+    else if(g.t==="me") h += `<div class="row me"><span class="av boss">你</span><span class="bwrap"><span class="meta">老板 · 你</span><div class="bub">${esc(g.x)}</div></span></div>`;
+    else if(g.t==="receipt") h += `<div class="receipt" data-rc><span>✓ ${g.x}</span> <button>展开</button><div class="detail">${esc(g.d)}</div></div>`;
+    else if(g.t==="agent"){ const o=M[g.m]; h += `<div class="row">${avatar(g.m)}<span class="bwrap"><span class="meta">${o.name} · ${o.engine.split(" ·")[0]}</span><div class="bub">${g.q?`<div class="quote">${esc(g.q)}</div>`:""}${esc(g.x)}</div></span></div>`; }
+    else if(g.t==="approve"){ const o=M[g.m]; h += `<div class="row">${avatar(g.m)}<span class="bwrap"><span class="meta">${o.name} · 权限请求</span><div class="acard"><div class="h"><svg class="ico" style="color:var(--warn)"><use href="#i-alert"/></svg> ${g.x}</div><div class="cmd">${g.cmd}</div><div class="btns" data-approve><button class="btn pri">允许本次</button><button class="btn">总是允许此命令</button><button class="btn">拒绝</button></div></div></span></div>`; }
+    else if(g.t==="file"){ const o=M[g.m]; h += `<div class="row">${avatar(g.m)}<span class="bwrap"><div class="fcard"><span class="fic"><svg class="ico"><use href="#i-file"/></svg></span><span><div class="fp">${g.p}</div><div class="fs">${g.s}</div></span><button class="open" onclick="toast('调用系统默认程序打开该文件')">打开</button></div></span></div>`; }
+    else if(g.t==="img"){ const o=M[g.m]; h += `<div class="row">${avatar(g.m)}<span class="bwrap"><span class="meta">${o.name} · 生图产出</span><div class="bub" style="max-width:320px">${esc(g.x)}<div class="imsg" style="margin-top:8px"><div class="ph"><svg class="ico" style="width:22px;height:22px"><use href="#i-image"/></svg><span>概念图预览（示意）</span></div><div class="cap">${g.cap}</div></div></div></span></div>`; }
+    else if(g.t==="confl") h += `<div class="sysalert"><span class="ttl"><svg class="ico" style="width:13px;height:13px"><use href="#i-alert"/></svg> 覆盖提醒</span> · <b>${g.a}</b> 与 <b>${g.b}</b> 都改了 <code>${g.f}</code>，${g.x}<br /><button class="act" onclick="toast('并排显示两个版本的差异')">查看差异</button><button class="act" onclick="toast('把被覆盖的改动恢复为一个新文件，交主策划合并')">恢复被覆盖版本</button></div>`;
+    else if(g.t==="typing"){ const o=M[g.m]; h += `<div class="typing">${avatar(g.m)}<span class="shim">${o.name} 正在输入…</span></div>`; }
+  }
+  stream.innerHTML = h; stream.scrollTop = stream.scrollHeight;
+}
+
+document.addEventListener("click", e => {
+  const ch = e.target.closest("[data-ch]");
+  if(ch){ cur = ch.dataset.ch;
+    document.querySelectorAll("[data-ch]").forEach(b=>b.classList.toggle("on", b===ch));
+    ch.querySelector(".unread")?.remove();
+    $("#chTitle").textContent = CH[cur].title; $("#chDesc").textContent = CH[cur].desc; $("#targetPill").textContent = CH[cur].pill;
+    $("#fusePill").style.display = cur==="group" ? "" : "none";
+    render(); return; }
+  const mem = e.target.closest("[data-mem]");
+  if(mem){ openDrawer(mem.dataset.mem); return; }
+  const rc = e.target.closest("[data-rc]");
+  if(rc && e.target.tagName==="BUTTON"){ rc.classList.toggle("open"); e.target.textContent = rc.classList.contains("open")?"收起":"展开"; return; }
+  const ap = e.target.closest("[data-approve]");
+  if(ap && e.target.classList.contains("btn")){ const t=e.target.textContent; ap.innerHTML = `<button class="btn done">✓ ${t==="拒绝"?"已拒绝":"已允许，脚本运行中"}</button>`; return; }
+  if(e.target.dataset.roll){ $("#modalBg").classList.add("open"); return; }
+  if(e.target.dataset.reset){ toast("整体回退：撤销这一刻之后的所有轮次，弹窗会列出受影响的成员和文件"); return; }
+});
+
+function openDrawer(k){ const o=M[k];
+  $("#dAv").style.background=o.cs; $("#dAv").style.color=o.c; $("#dAv").textContent=o.av;
+  $("#dName").textContent=o.name; $("#dEngine").textContent=o.engine; $("#dModel").textContent=o.model;
+  const pct = k==="zhu"?62:k==="shu"?31:18;
+  setRing(pct);
+  $("#dDm").onclick = ()=>{ $("#drawer").classList.remove("open"); document.querySelector(`[data-ch="dm-${k}"]`).click(); };
+  $("#drawer").classList.add("open");
+}
+function setRing(pct){ const c = 2*Math.PI*27; $("#ringVal").setAttribute("stroke-dasharray", `${c*pct/100} ${c}`);
+  $("#ringVal").style.stroke = pct>75?"var(--danger)":pct>55?"var(--warn)":"var(--ok)";
+  $("#ctxPct").textContent = pct+"%"; }
+$("#drawerClose").onclick = ()=> $("#drawer").classList.remove("open");
+$("#compactBtn").onclick = ()=>{ setRing(21); toast("已发送压缩指令，历史对话被摘要归档，占用降至 21%"); };
+
+$("#mCancel").onclick = ()=> $("#modalBg").classList.remove("open");
+$("#mOk").onclick = ()=>{ $("#modalBg").classList.remove("open");
+  msgs.group.push({t:"sys", x:"已撤销快照 #14 那一轮的 2 个文件改动 · 其他成员的改动全部保留"});
+  msgs.group.push({t:"me", x:"【系统代发 · 更正声明】数值程序那一轮的产出已撤销，签到奖励表 v1 作废，其余文件不受影响，请全员以当前工作区为准。"});
+  cur="group"; render(); toast("已撤销该轮改动，并向全员广播更正声明"); };
+
+$("#quickBtn").onclick = e=>{ const p=$("#qpop"); const r=e.target.getBoundingClientRect();
+  p.style.left=Math.max(8,r.left-20)+"px"; p.style.bottom=(innerHeight-r.top+10)+"px"; p.classList.toggle("open"); e.stopPropagation(); };
+document.addEventListener("click", e=>{ if(!e.target.closest("#qpop")) $("#qpop").classList.remove("open"); });
+$("#qpop").addEventListener("click", e=>{ if(e.target.dataset.q){ $("#input").value=e.target.dataset.q; $("#qpop").classList.remove("open"); $("#input").focus(); } });
+
+function send(){ const v=$("#input").value.trim(); if(!v) return;
+  msgs[cur].push({t:"me", x:v}); $("#input").value=""; render();
+  if(cur==="group"){ setTimeout(()=>{ msgs.group.push({t:"receipt", x:"数值程序、美术 已收到", d:"数值程序：[收到]\n美术：[收到]"}); render(); }, 600);
+    setTimeout(()=>{ msgs.group.push({t:"agent", m:"zhu", x:"收到，我来安排。（原型演示回复）"}); render(); }, 1400); }
+  else { const k=cur.replace("dm-",""); if(M[k]) setTimeout(()=>{ msgs[cur].push({t:"agent", m:k, x:"收到，这条只有我们俩知道。（原型演示回复）"}); render(); }, 900); } }
+$("#sendBtn").onclick = send;
+$("#input").addEventListener("keydown", e=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); send(); } });
+
+let toastTimer;
+function toast(x){ const t=$("#toast"); t.textContent=x; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"), 2600); }
+
+$("#themeBtn").onclick = ()=>{ const r=document.documentElement;
+  const dark = r.dataset.theme ? r.dataset.theme==="dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  r.dataset.theme = dark ? "light" : "dark"; };
+
+function glider(box, itemSel, activeSel){
+  const g = box.querySelector(".glide");
+  const move = el => { if(!el){ g.style.opacity = "0"; return; }
+    g.style.top = el.offsetTop+"px"; g.style.left = el.offsetLeft+"px";
+    g.style.width = el.offsetWidth+"px"; g.style.height = el.offsetHeight+"px"; g.style.opacity = "1"; };
+  const rest = () => move(box.querySelector(activeSel));
+  box.addEventListener("mouseover", e => { const b = e.target.closest(itemSel); if(b && box.contains(b)) move(b); });
+  box.addEventListener("mouseleave", rest);
+  g.style.transition = "none"; rest(); requestAnimationFrame(()=>{ g.style.transition = ""; });
+}
+glider(document.querySelector(".rail"), ".rbtn", ".rbtn.on");
+glider(document.querySelector(".side"), ".chan, .mem, .teambtn", ".chan.on");
+
+render();
+</script>

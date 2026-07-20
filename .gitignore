@@ -1,0 +1,27 @@
+node_modules/
+.clideck-data/
+
+# 本地配置与凭据
+.env
+.env.*
+!.env.example
+
+# 测试、构建与工具输出
+coverage/
+.nyc_output/
+dist/
+build/
+.cache/
+tmp/
+temp/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# 编辑器与操作系统文件
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp

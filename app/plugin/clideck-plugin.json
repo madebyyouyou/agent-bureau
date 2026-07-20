@@ -1,0 +1,12 @@
+{
+  "id": "kaifabuqun",
+  "name": "开发部群",
+  "version": "0.6.1",
+  "author": "YouYou",
+  "description": "跨模型 AI 开发团队群聊：串行发言权 + 双通道信封、自动已读回执、熔断、git 快照按轮撤销。界面在 /plugins/kaifabuqun/index.html",
+  "settings": [
+    { "key": "bossName", "label": "你的称呼（消息署名与界面显示）", "type": "text", "default": "用户" },
+    { "key": "fuseLimit", "label": "熔断阈值（成员连续扩散条数）", "type": "number", "default": 6, "min": 2, "max": 30 },
+    { "key": "backupDir", "label": "备份文件夹（留空=不备份）", "type": "text", "default": "" }
+  ]
+}

@@ -1,0 +1,473 @@
+<title>开发部群聊 · 交互原型 v1</title>
+<style>
+:root{
+  --bg:#F4F6F8; --panel:#FFFFFF; --panel2:#EDF0F4; --line:#E2E6EB; --line2:#D3D9E0;
+  --ink:#1C232E; --ink2:#5B6573; --ink3:#96A0AD;
+  --accent:#3161D1; --on-accent:#FFFFFF; --accent-soft:#E9EFFB; --accent-ink:#274FA8;
+  --ok:#188A5E; --ok-soft:#E2F3EB; --warn:#A96F14; --warn-soft:#FAF0DB; --danger:#C43D32; --danger-soft:#FAE8E6;
+  --zhu:#6F4FD8; --zhu-soft:#EEE9FB; --shu:#0E8A6D; --shu-soft:#E1F2EC; --mei:#C94E77; --mei-soft:#FAE8EF;
+  --sys:#8A94A2;
+  --r:8px; --rb:10px;
+}
+:root[data-theme="dark"]{
+  --bg:#15181D; --panel:#1E222A; --panel2:#262B34; --line:#2E343E; --line2:#3A414D;
+  --ink:#E7EAEF; --ink2:#A6AFBC; --ink3:#6E7887;
+  --accent:#6E93EF; --on-accent:#0E1524; --accent-soft:#243044; --accent-ink:#9FB8F5;
+  --ok:#3DBB8C; --ok-soft:#1E3229; --warn:#D9A24A; --warn-soft:#37301F; --danger:#E06A5E; --danger-soft:#3A2523;
+  --zhu:#A48BEF; --zhu-soft:#2C2740; --shu:#3FBD9A; --shu-soft:#1D332C; --mei:#E97BA0; --mei-soft:#3A2530;
+  --sys:#77808D;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme]){
+    --bg:#15181D; --panel:#1E222A; --panel2:#262B34; --line:#2E343E; --line2:#3A414D;
+    --ink:#E7EAEF; --ink2:#A6AFBC; --ink3:#6E7887;
+    --accent:#6E93EF; --on-accent:#0E1524; --accent-soft:#243044; --accent-ink:#9FB8F5;
+    --ok:#3DBB8C; --ok-soft:#1E3229; --warn:#D9A24A; --warn-soft:#37301F; --danger:#E06A5E; --danger-soft:#3A2523;
+    --zhu:#A48BEF; --zhu-soft:#2C2740; --shu:#3FBD9A; --shu-soft:#1D332C; --mei:#E97BA0; --mei-soft:#3A2530;
+    --sys:#77808D;
+  }
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{height:100%;}
+body{
+  font-family:"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  background:var(--bg); color:var(--ink); font-size:14px; line-height:1.6;
+}
+button{font:inherit; color:inherit; background:none; border:none; cursor:pointer;}
+button:focus-visible, [tabindex]:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:6px;}
+.app{display:flex; height:100vh; overflow:hidden;}
+
+.rail{width:56px; flex-shrink:0; background:var(--panel); border-right:1px solid var(--line); display:flex; flex-direction:column; align-items:center; gap:10px; padding:12px 0;}
+.rail .logo{width:34px; height:34px; border-radius:10px; background:var(--accent-soft); color:var(--accent-ink); display:flex; align-items:center; justify-content:center; font-weight:600; font-size:15px;}
+.rail .rbtn{width:36px; height:36px; border-radius:9px; display:flex; align-items:center; justify-content:center; color:var(--ink3); font-size:17px;}
+.rail .rbtn:hover{background:var(--panel2); color:var(--ink2);}
+.rail .rbtn.on{background:var(--accent-soft); color:var(--accent-ink);}
+.rail .spacer{flex:1;}
+
+.side{width:218px; flex-shrink:0; background:var(--panel); border-right:1px solid var(--line); display:flex; flex-direction:column; overflow-y:auto;}
+.side .head{padding:14px 14px 10px; border-bottom:1px solid var(--line);}
+.side .head .team{font-weight:600; font-size:15px; display:flex; align-items:center; gap:6px;}
+.side .head .team .chev{color:var(--ink3); font-size:11px;}
+.side .head .sub{font-size:12px; color:var(--ink3); margin-top:2px;}
+.sec{padding:12px 8px 4px;}
+.sec .label{font-size:11px; color:var(--ink3); padding:0 8px 6px; letter-spacing:.06em;}
+.chan{display:flex; align-items:center; gap:8px; width:100%; text-align:left; padding:7px 8px; border-radius:8px; color:var(--ink2); font-size:13.5px;}
+.chan:hover{background:var(--panel2);}
+.chan.on{background:var(--accent-soft); color:var(--accent-ink); font-weight:500;}
+.chan .ic{width:18px; text-align:center; flex-shrink:0; color:var(--ink3);}
+.chan.on .ic{color:var(--accent-ink);}
+.chan .nm{flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.chan .unread{min-width:17px; height:17px; border-radius:9px; background:var(--danger); color:#fff; font-size:11px; display:flex; align-items:center; justify-content:center; padding:0 5px;}
+.mem{display:flex; align-items:center; gap:8px; width:100%; text-align:left; padding:7px 8px; border-radius:8px;}
+.mem:hover{background:var(--panel2);}
+.mem .av{width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:500; flex-shrink:0;}
+.mem .info{flex:1; min-width:0;}
+.mem .nm{font-size:13px; font-weight:500; line-height:1.3; display:flex; align-items:center; gap:6px;}
+.mem .st{font-size:11px; color:var(--ink3); line-height:1.3;}
+.dot{width:7px; height:7px; border-radius:50%; flex-shrink:0;}
+.dot.busy{background:var(--ok);}
+.dot.idle{background:transparent; border:1.5px solid var(--line2);}
+.ctxbar{height:3px; border-radius:2px; background:var(--panel2); margin-top:4px; overflow:hidden;}
+.ctxbar i{display:block; height:100%; border-radius:2px;}
+
+.main{flex:1; min-width:0; display:flex; flex-direction:column; background:var(--bg);}
+.chead{background:var(--panel); border-bottom:1px solid var(--line); padding:10px max(18px, calc((100% - 840px)/2)); display:flex; align-items:center; gap:10px;}
+.chead .t{font-weight:600; font-size:15px;}
+.chead .d{font-size:12px; color:var(--ink3);}
+.pill{font-size:11.5px; padding:3px 10px; border-radius:99px; background:var(--ok-soft); color:var(--ok); cursor:help;}
+.pill.paused{background:var(--warn-soft); color:var(--warn);}
+.chead .grow{flex:1;}
+.chead .hbtn{color:var(--ink3); font-size:15px; padding:4px 8px; border-radius:7px;}
+.chead .hbtn:hover{background:var(--panel2);}
+
+.stream{flex:1; overflow-y:auto; padding:18px max(22px, calc((100% - 840px)/2)) 8px; display:flex; flex-direction:column; gap:14px;}
+.sysline{text-align:center; font-size:11.5px; color:var(--sys); display:flex; align-items:center; gap:10px; justify-content:center;}
+.sysline::before,.sysline::after{content:""; height:1px; background:var(--line); flex:1; max-width:120px;}
+.snap{display:flex; justify-content:center;}
+.snap .card{font-size:12px; color:var(--ink2); background:var(--panel); border:1px solid var(--line); border-radius:99px; padding:4px 6px 4px 12px; display:flex; align-items:center; gap:8px;}
+.snap .card b{font-weight:500;}
+.snap .act{font-size:12px; color:var(--accent-ink); background:var(--accent-soft); border-radius:99px; padding:2px 10px;}
+.snap .act:hover{filter:brightness(.96);}
+
+.row{display:flex; gap:10px; max-width:72%;}
+.row.me{align-self:flex-end; flex-direction:row-reverse;}
+.av{width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:500; flex-shrink:0; cursor:pointer;}
+.av.boss{background:var(--accent); color:var(--on-accent); cursor:default;}
+.bwrap{min-width:0;}
+.meta{font-size:11.5px; color:var(--ink3); margin:0 4px 3px; display:flex; gap:6px; align-items:center;}
+.row.me .meta{justify-content:flex-end;}
+.tag{font-size:10.5px; padding:1px 7px; border-radius:99px; background:var(--panel2); color:var(--ink3);}
+.tag.dm{background:var(--warn-soft); color:var(--warn);}
+.bub{background:var(--panel); border:1px solid var(--line); border-radius:3px var(--rb) var(--rb) var(--rb); padding:8px 12px; font-size:14px; white-space:pre-wrap; word-break:break-word;}
+.row.me .bub{background:var(--accent-soft); color:var(--accent-ink); border:1px solid transparent; border-radius:var(--rb) 3px var(--rb) var(--rb);}
+.bub .at{color:var(--accent-ink); background:var(--accent-soft); border-radius:5px; padding:0 4px; font-weight:500;}
+.row.me .bub .at{color:var(--accent-ink); background:var(--panel);}
+.quote{border-left:3px solid var(--line2); padding:2px 10px; margin-bottom:7px; font-size:12.5px; color:var(--ink2);}
+
+.receipt{align-self:flex-end; max-width:78%; font-size:11.5px; color:var(--ink3); margin-top:-8px; padding-right:46px;}
+.receipt button{color:var(--ink3); text-decoration:underline dotted; font-size:11.5px;}
+.receipt .detail{display:none; margin-top:4px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:6px 10px; text-align:left;}
+.receipt.open .detail{display:block;}
+
+.acard{background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--warn); border-radius:0 var(--r) var(--r) 0; padding:11px 14px; font-size:13.5px; max-width:520px;}
+.acard .h{font-weight:600; font-size:13px; display:flex; gap:8px; align-items:center;}
+.acard .cmd{font-family:Consolas,Menlo,monospace; font-size:12.5px; background:var(--panel2); border-radius:6px; padding:5px 9px; margin:8px 0; overflow-x:auto;}
+.acard .btns{display:flex; gap:8px;}
+.btn{font-size:12.5px; padding:5px 14px; border-radius:8px; border:1px solid var(--line2); color:var(--ink2);}
+.btn:hover{background:var(--panel2);}
+.btn.pri{background:var(--accent-soft); color:var(--accent-ink); border-color:transparent; font-weight:500;}
+.btn.pri:hover{filter:brightness(.95);}
+.btn.done{background:var(--ok-soft); color:var(--ok); border-color:transparent; pointer-events:none;}
+
+.fcard{display:flex; align-items:center; gap:11px; background:var(--panel); border:1px solid var(--line); border-radius:var(--r); padding:10px 14px; max-width:420px;}
+.fcard .fic{width:36px; height:36px; border-radius:9px; background:var(--accent-soft); color:var(--accent-ink); display:flex; align-items:center; justify-content:center; font-size:16px;}
+.fcard .fp{font-family:Consolas,Menlo,monospace; font-size:12.5px;}
+.fcard .fs{font-size:11.5px; color:var(--ink3);}
+.fcard .open{margin-left:auto; font-size:12px; color:var(--accent-ink);}
+
+.imsg{max-width:300px;}
+.imsg .ph{height:150px; border-radius:var(--r); border:1px solid var(--line); background:
+  repeating-linear-gradient(45deg,var(--panel2) 0 14px,var(--panel) 14px 28px);
+  display:flex; align-items:center; justify-content:center; color:var(--ink3); font-size:12px; flex-direction:column; gap:6px;}
+.imsg .cap{font-size:11.5px; color:var(--ink3); margin-top:4px; font-family:Consolas,Menlo,monospace;}
+
+.confl{background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--danger); border-radius:0 var(--r) var(--r) 0; padding:11px 14px; font-size:13px; max-width:560px;}
+.confl .h{color:var(--danger); font-weight:600; display:flex; gap:7px; align-items:center; font-size:13px;}
+.confl p{color:var(--ink2); margin:5px 0 9px;}
+.confl code{font-family:Consolas,Menlo,monospace; background:var(--panel2); border-radius:5px; padding:1px 6px; font-size:12px;}
+
+.typing{display:flex; gap:10px; align-items:center; color:var(--ink3); font-size:12px;}
+.typing .balls{display:inline-flex; gap:3px;}
+.typing .balls i{width:5px; height:5px; border-radius:50%; background:var(--ink3); animation:tp 1.2s infinite;}
+.typing .balls i:nth-child(2){animation-delay:.2s;}
+.typing .balls i:nth-child(3){animation-delay:.4s;}
+@keyframes tp{0%,60%,100%{opacity:.3;} 30%{opacity:1;}}
+@media (prefers-reduced-motion: reduce){ .typing .balls i{animation:none;} .drawer{transition:none;} }
+
+.composer{background:var(--panel); border-top:1px solid var(--line); padding:10px max(16px, calc((100% - 840px)/2)) 12px;}
+.target{font-size:11.5px; color:var(--ink3); margin-bottom:7px; display:flex; gap:6px; align-items:center;}
+.target .tp{background:var(--panel2); border-radius:99px; padding:1px 10px; color:var(--ink2);}
+.inrow{display:flex; align-items:flex-end; gap:8px;}
+.ibtn{width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center; color:var(--ink3); font-size:17px; flex-shrink:0;}
+.ibtn:hover{background:var(--panel2); color:var(--ink2);}
+.input{flex:1; background:var(--panel2); border:1px solid transparent; border-radius:10px; padding:8px 12px; font:inherit; color:var(--ink); resize:none; max-height:120px; min-height:36px;}
+.input:focus{outline:none; border-color:var(--accent); background:var(--panel);}
+.send{width:60px; height:34px; border-radius:8px; background:var(--accent-soft); color:var(--accent-ink); font-size:13px; font-weight:500; flex-shrink:0;}
+.send:hover{filter:brightness(.95);}
+
+.drawer{position:fixed; top:0; right:-320px; width:300px; height:100vh; background:var(--panel); border-left:1px solid var(--line); box-shadow:-12px 0 32px rgba(10,15,25,.08); transition:right .22s ease; z-index:40; padding:18px; overflow-y:auto;}
+.drawer.open{right:0;}
+.drawer .close{position:absolute; top:12px; right:12px; color:var(--ink3); font-size:16px; padding:4px 8px; border-radius:7px;}
+.drawer .close:hover{background:var(--panel2);}
+.dhead{display:flex; gap:12px; align-items:center; margin-bottom:14px;}
+.dhead .av{width:46px; height:46px; font-size:17px;}
+.dhead .nm{font-weight:600; font-size:16px;}
+.dhead .en{font-size:12px; color:var(--ink3);}
+.dsec{border-top:1px solid var(--line); padding:13px 0;}
+.dsec .lb{font-size:11px; color:var(--ink3); letter-spacing:.06em; margin-bottom:9px;}
+.ctxwrap{display:flex; gap:14px; align-items:center;}
+.ring{transform:rotate(-90deg);}
+.ring .track{stroke:var(--panel2);}
+.ring .val{stroke:var(--ok); transition:stroke-dasharray .5s ease;}
+.ctxnum{font-size:20px; font-weight:600; font-variant-numeric:tabular-nums;}
+.ctxnum small{font-size:11px; color:var(--ink3); font-weight:400; display:block;}
+.mrow{display:flex; align-items:center; justify-content:space-between; font-size:13px; padding:5px 0;}
+.mrow .v{color:var(--ink2); display:flex; gap:6px; align-items:center;}
+.quota{height:5px; border-radius:3px; background:var(--panel2); overflow:hidden; margin-top:5px;}
+.quota i{display:block; height:100%; background:var(--ok); border-radius:3px;}
+.dbtns{display:flex; flex-wrap:wrap; gap:8px;}
+
+.modal-bg{position:fixed; inset:0; background:rgba(15,20,30,.45); z-index:60; display:none; align-items:center; justify-content:center;}
+.modal-bg.open{display:flex;}
+.modal{background:var(--panel); border-radius:14px; width:420px; max-width:92vw; padding:20px 22px; border:1px solid var(--line);}
+.modal h3{font-size:15px; margin-bottom:10px;}
+.modal p{font-size:13px; color:var(--ink2); margin-bottom:8px;}
+.modal ul{margin:0 0 12px 18px; font-size:12.5px; color:var(--ink2); font-family:Consolas,Menlo,monospace;}
+.modal .note{font-size:12px; background:var(--accent-soft); color:var(--accent-ink); border-radius:8px; padding:8px 11px; margin-bottom:14px;}
+.modal .btns{display:flex; justify-content:flex-end; gap:8px;}
+
+.toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--ink); color:var(--bg); font-size:13px; border-radius:99px; padding:8px 18px; z-index:80; opacity:0; transition:opacity .2s; pointer-events:none; max-width:80vw;}
+.toast.show{opacity:1;}
+
+.qpop{position:fixed; z-index:50; background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:6px; display:none; box-shadow:0 8px 24px rgba(10,15,25,.12); width:280px;}
+.qpop.open{display:block;}
+.qpop button{display:block; width:100%; text-align:left; font-size:13px; padding:7px 10px; border-radius:7px; color:var(--ink2);}
+.qpop button:hover{background:var(--panel2);}
+
+.hint{background:var(--panel2); color:var(--ink3); font-size:12px; text-align:center; padding:5px 10px; border-bottom:1px solid var(--line);}
+.ico{width:16px; height:16px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; vertical-align:-3px;}
+@media (max-width:900px){ .side{display:none;} .rail{display:none;} .row{max-width:94%;} }
+</style>
+
+<svg style="display:none" aria-hidden="true">
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></symbol>
+  <symbol id="i-clip" viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></symbol>
+  <symbol id="i-zap" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
+</svg>
+<div class="hint">交互原型 v1 · 假数据演示 — 可点：左侧频道与成员、批准卡按钮、快照行的「回滚」、回执展开、⚡快捷指令、发送消息、右上🌓换肤</div>
+<div class="app">
+  <nav class="rail" aria-label="工作台导航">
+    <div class="logo">部</div>
+    <button class="rbtn on" title="游戏开发部">游</button>
+    <button class="rbtn" title="简历工作室（示意）" onclick="toast('原型仅演示「游戏开发部」')">简</button>
+    <div class="spacer"></div>
+    <button class="rbtn" id="themeBtn" title="切换深浅色"><svg class="ico"><use href="#i-moon"/></svg></button>
+    <button class="rbtn" title="设置（示意）" onclick="toast('设置页在 v1 里包含：引擎命令、通知声音、主题')"><svg class="ico"><use href="#i-sliders"/></svg></button>
+  </nav>
+
+  <aside class="side" aria-label="频道与成员">
+    <div class="head">
+      <div class="team">游戏开发部 <span class="chev">▾</span></div>
+      <div class="sub">C:\projects\demo-team · 3 名成员在岗</div>
+    </div>
+    <div class="sec">
+      <div class="label">频道</div>
+      <button class="chan on" data-ch="group"><span class="ic">#</span><span class="nm">群聊（全员上下文）</span></button>
+    </div>
+    <div class="sec">
+      <div class="label">私聊 · 只进双方上下文</div>
+      <button class="chan" data-ch="dm-zhu"><span class="ic">◦</span><span class="nm">主策划</span><span class="unread">2</span></button>
+      <button class="chan" data-ch="dm-shu"><span class="ic">◦</span><span class="nm">数值程序</span></button>
+      <button class="chan" data-ch="dm-mei"><span class="ic">◦</span><span class="nm">美术</span></button>
+    </div>
+    <div class="sec">
+      <div class="label">同事私聊 · 你在旁听</div>
+      <button class="chan" data-ch="dm-zm"><span class="ic">⇄</span><span class="nm">主策划 ⇄ 美术</span><span class="unread">1</span></button>
+    </div>
+    <div class="sec">
+      <div class="label">成员</div>
+      <button class="mem" data-mem="zhu">
+        <span class="av" style="background:var(--zhu-soft); color:var(--zhu)">策</span>
+        <span class="info"><span class="nm">主策划 <span class="dot busy"></span></span><span class="st">Claude · Opus · 干活中</span>
+        <span class="ctxbar"><i style="width:62%; background:var(--warn)"></i></span></span>
+      </button>
+      <button class="mem" data-mem="shu">
+        <span class="av" style="background:var(--shu-soft); color:var(--shu)">数</span>
+        <span class="info"><span class="nm">数值程序 <span class="dot busy"></span></span><span class="st">Codex · GPT-5.x · 干活中</span>
+        <span class="ctxbar"><i style="width:31%; background:var(--ok)"></i></span></span>
+      </button>
+      <button class="mem" data-mem="mei">
+        <span class="av" style="background:var(--mei-soft); color:var(--mei)">美</span>
+        <span class="info"><span class="nm">美术 <span class="dot idle"></span></span><span class="st">Gemini · 3.1 Pro · 空闲</span>
+        <span class="ctxbar"><i style="width:18%; background:var(--ok)"></i></span></span>
+      </button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="chead">
+      <span class="t" id="chTitle">群聊</span>
+      <span class="d" id="chDesc">发言广播给全员，@ 只是点名提醒</span>
+      <span class="pill" id="fusePill" title="防止成员之间无限互聊烧额度：连续 6 条无老板发言将自动暂停，等你放行">自由讨论 · 熔断剩 4 轮</span>
+      <span class="grow"></span>
+      <button class="hbtn" title="搜索聊天记录（v1 含）" onclick="toast('搜索：全文检索所有频道记录')"><svg class="ico"><use href="#i-search"/></svg></button>
+    </header>
+    <div class="stream" id="stream" aria-live="polite"></div>
+    <div class="composer">
+      <div class="target" id="target"><span>发到</span><span class="tp" id="targetPill">群聊 · 进入全员上下文</span></div>
+      <div class="inrow">
+        <button class="ibtn" title="附件：把文件路径附给消息" onclick="toast('选择文件后，会把文件以路径形式附给这条消息')"><svg class="ico"><use href="#i-clip"/></svg></button>
+        <button class="ibtn" id="quickBtn" title="快捷指令收藏"><svg class="ico"><use href="#i-zap"/></svg></button>
+        <textarea class="input" id="input" rows="1" placeholder="发消息，@ 可点名，回车发送"></textarea>
+        <button class="send" id="sendBtn">发送</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="drawer" id="drawer" aria-label="成员档案">
+  <button class="close" id="drawerClose" aria-label="关闭">✕</button>
+  <div class="dhead">
+    <span class="av" id="dAv"></span>
+    <span><span class="nm" id="dName"></span><br /><span class="en" id="dEngine"></span></span>
+  </div>
+  <div class="dsec">
+    <div class="lb">上下文占用</div>
+    <div class="ctxwrap">
+      <svg class="ring" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true">
+        <circle class="track" cx="32" cy="32" r="27" fill="none" stroke-width="7"></circle>
+        <circle class="val" id="ringVal" cx="32" cy="32" r="27" fill="none" stroke-width="7" stroke-linecap="round" stroke-dasharray="105 170"></circle>
+      </svg>
+      <div class="ctxnum"><span id="ctxPct">62%</span><small>约 124k / 200k tokens</small></div>
+    </div>
+    <div style="margin-top:10px"><button class="btn" id="compactBtn">压缩上下文</button> <span style="font-size:11.5px; color:var(--ink3)">建议在 80% 前压缩</span></div>
+  </div>
+  <div class="dsec">
+    <div class="lb">引擎与模型</div>
+    <div class="mrow"><span>当前模型</span><span class="v" id="dModel"></span></div>
+    <div class="mrow"><span>换模型</span><span class="v"><button class="btn" onclick="toast('可靠做法：带新模型参数重启工位（会话可恢复）')">选择并重启 ▾</button></span></div>
+    <div class="mrow"><span>今日额度</span><span class="v" style="flex:1; max-width:130px"><span class="quota" style="flex:1"><i style="width:44%"></i></span></span></div>
+  </div>
+  <div class="dsec">
+    <div class="lb">操作</div>
+    <div class="dbtns">
+      <button class="btn" id="dDm">发私聊</button>
+      <button class="btn" onclick="toast('弹出该成员的原始终端画面（气泡翻译不准时看这里）')">看原始终端</button>
+      <button class="btn" onclick="toast('暂停：本轮完成后不再接新消息')">暂停</button>
+      <button class="btn" onclick="toast('极端情况用：关闭当前会话换个新脑，记忆清零，用会议纪要喂回背景')">重开会话</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal" role="dialog" aria-label="回滚确认">
+    <h3>撤销「数值程序」这一轮的改动？</h3>
+    <p>只反做这一轮碰过的 2 个文件，其他成员此后的改动不受影响：</p>
+    <ul>
+      <li>sandbox\sim_signin.py（新增 → 删除）</li>
+      <li>docs\签到奖励表_v1.csv（新增 → 删除）</li>
+    </ul>
+    <div class="note">只恢复文件，不清除记忆——完成后自动在群里广播更正声明。若这轮文件与后续某轮有重叠，这里会提示你改用「回到此刻」整体回退，或交主策划手工处理。</div>
+    <div class="btns">
+      <button class="btn" id="mCancel">取消</button>
+      <button class="btn pri" id="mOk">确认撤销并广播</button>
+    </div>
+  </div>
+</div>
+
+<div class="qpop" id="qpop">
+  <button data-q="汇报一下各自手头进度，一句话即可。">全员进度汇报</button>
+  <button data-q="把今天的结论整理成会议纪要存到 docs\，并在群里贴出路径。">生成会议纪要</button>
+  <button data-q="暂停当前工作，等待我的下一步指示。">全员暂停待命</button>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const M = {
+  zhu:{name:"主策划", av:"策", c:"var(--zhu)", cs:"var(--zhu-soft)", engine:"Claude Code · 订阅", model:"Opus 4.x"},
+  shu:{name:"数值程序", av:"数", c:"var(--shu)", cs:"var(--shu-soft)", engine:"Codex · ChatGPT Plus", model:"GPT-5.x codex"},
+  mei:{name:"美术", av:"美", c:"var(--mei)", cs:"var(--mei-soft)", engine:"Antigravity · Gemini Pro", model:"Gemini 3.1 Pro"}
+};
+const CH = {
+  group:{title:"群聊", desc:"发言广播给全员，@ 只是点名提醒", pill:"群聊 · 进入全员上下文"},
+  "dm-zhu":{title:"私聊 · 主策划", desc:"只进你和主策划的上下文", pill:"私聊主策划 · 其他成员不可见"},
+  "dm-shu":{title:"私聊 · 数值程序", desc:"只进你和数值程序的上下文", pill:"私聊数值程序 · 其他成员不可见"},
+  "dm-mei":{title:"私聊 · 美术", desc:"只进你和美术的上下文", pill:"私聊美术 · 其他成员不可见"},
+  "dm-zm":{title:"主策划 ⇄ 美术", desc:"同事私聊 · 你在旁听，发言将以老板身份插入", pill:"旁听中 · 发言即插话"}
+};
+const msgs = {
+  group:[
+    {t:"sys", x:"今天 09:30 · 全员上岗"},
+    {t:"snap", n:"13", x:"老板发言前自动快照"},
+    {t:"me", x:"宗门签到功能，各位出个方案。玩法 <at>@主策划</at> 牵头，数值和视觉分头准备。"},
+    {t:"receipt", x:"数值程序、美术 已收到", d:"数值程序：[收到] 开始整理签到奖励模型。\n美术：[收到] 先出两版风格小样。"},
+    {t:"agent", m:"zhu", x:"收到。我的拆法：签到入口挂在宗门大殿；七日一循环、月度大奖；断签可用宗门贡献补签一次。数值细节交给数值程序，面板视觉交给美术，晚点我汇总完整案。"},
+    {t:"approve", m:"shu", cmd:"python sandbox\\sim_signin.py --days 90", x:"数值程序 请求运行模拟脚本（工作区内）"},
+    {t:"snap", n:"14", x:"数值程序 完工 · 改动 2 个文件", roll:true},
+    {t:"agent", m:"shu", x:"90 天模拟跑完：七日循环 + 第 30 天大奖的留存曲线最平滑，断签补签定价 200 贡献不破坏经济。奖励表在 ↓"},
+    {t:"file", m:"shu", p:"docs\\签到奖励表_v1.csv", s:"产出文件 · 点击打开"},
+    {t:"img", m:"mei", cap:"assets\\签到面板_概念图_0707.png", x:"面板概念图：水墨卷轴底 + 金色印章做已签标记，两版里我推荐这版。"},
+    {t:"confl", a:"数值程序", b:"美术", f:"assets\\ui.css", x:"后者的修改覆盖了前者（10:42 与 10:47）。两个版本都在快照里，没有丢失。"},
+    {t:"typing", m:"zhu"}
+  ],
+  "dm-zhu":[
+    {t:"sys", x:"这里的内容只进你和主策划的上下文"},
+    {t:"me", x:"跟你单独说：签到奖励别太厚，我不想游戏变成打卡软件。"},
+    {t:"agent", m:"zhu", x:"明白，我会把大奖压到「惊喜感」而不是「必需品」的量级，这个倾向我不在群里明说，落在方案里。"},
+    {t:"agent", m:"zhu", x:"另外提醒：美术的概念图很好，但字体版权要确认，我私下先问她要字体来源。"}
+  ],
+  "dm-shu":[
+    {t:"sys", x:"这里的内容只进你和数值程序的上下文"},
+    {t:"me", x:"上次那个成长曲线的思路挺好，签到这次也按那个手感来。"},
+    {t:"agent", m:"shu", x:"好，沿用「前期陡后期缓」的收益节奏，我在模拟里加一组对照。"}
+  ],
+  "dm-mei":[
+    {t:"sys", x:"这里的内容只进你和美术的上下文"}
+  ],
+  "dm-zm":[
+    {t:"sys", x:"同事私聊 · 你在旁听"},
+    {t:"agent", m:"zhu", x:"概念图里的书法字体是哪来的？商用授权要干净。"},
+    {t:"agent", m:"mei", x:"是我生成的图，字是画出来的不是字体文件，无版权问题。落地时正文我会换思源宋体。"}
+  ]
+};
+let cur = "group";
+const $ = s => document.querySelector(s);
+const stream = $("#stream");
+
+function esc(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/&lt;at&gt;/g,'<span class="at">').replace(/&lt;\/at&gt;/g,"</span>"); }
+function avatar(m, extra){ const o = M[m]; return `<span class="av" style="background:${o.cs}; color:${o.c}" data-mem="${m}" title="查看${o.name}档案">${o.av}</span>`; }
+
+function render(){
+  const list = msgs[cur]; let h = "";
+  for(const g of list){
+    if(g.t==="sys") h += `<div class="sysline">${g.x}</div>`;
+    else if(g.t==="snap") h += `<div class="snap"><span class="card"><svg class="ico" style="width:13px;height:13px"><use href="#i-camera"/></svg> 快照 #${g.n} · ${g.x}${g.roll?` <button class="act" data-roll="${g.n}">撤销这轮</button><button class="act" data-reset="${g.n}" style="background:var(--panel2); color:var(--ink3)">回到此刻</button>`:""}</span></div>`;
+    else if(g.t==="me") h += `<div class="row me"><span class="av boss">你</span><span class="bwrap"><span class="meta">老板 · 你</span><div class="bub">${esc(g.x)}</div></span></div>`;
+    else if(g.t==="receipt") h += `<div class="receipt" data-rc><span>✓ ${g.x}</span> <button>展开</button><div class="detail">${esc(g.d)}</div></div>`;
+    else if(g.t==="agent"){ const o=M[g.m]; h += `<div class="row">${avatar(g.m)}<span class="bwrap"><span class="meta">${o.name} · ${o.engine.split(" ·")[0]}</span><div class="bub">${g.q?`<div class="quote">${esc(g.q)}</div>`:""}${esc(g.x)}</div></span></div>`; }
+    else if(g.t==="approve"){ const o=M[g.m]; h += `<div class="row">${avatar(g.m)}<span class="bwrap"><span class="meta">${o.name} · 权限请求</span><div class="acard"><div class="h"><svg class="ico" style="color:var(--warn)"><use href="#i-alert"/></svg> ${g.x}</div><div class="cmd">${g.cmd}</div><div class="btns" data-approve><button class="btn pri">允许本次</button><button class="btn">总是允许此命令</button><button class="btn">拒绝</button></div></div></span></div>`; }
+    else if(g.t==="file"){ const o=M[g.m]; h += `<div class="row">${avatar(g.m)}<span class="bwrap"><div class="fcard"><span class="fic"><svg class="ico"><use href="#i-file"/></svg></span><span><div class="fp">${g.p}</div><div class="fs">${g.s}</div></span><button class="open" onclick="toast('调用系统默认程序打开该文件')">打开</button></div></span></div>`; }
+    else if(g.t==="img"){ const o=M[g.m]; h += `<div class="row">${avatar(g.m)}<span class="bwrap"><span class="meta">${o.name} · 生图产出</span><div class="bub" style="max-width:320px">${esc(g.x)}<div class="imsg" style="margin-top:8px"><div class="ph"><svg class="ico" style="width:22px;height:22px"><use href="#i-image"/></svg><span>概念图预览（示意）</span></div><div class="cap">${g.cap}</div></div></div></span></div>`; }
+    else if(g.t==="confl") h += `<div class="row" style="max-width:100%"><span class="av" style="background:var(--danger-soft); color:var(--danger)">!</span><span class="bwrap"><span class="meta">系统 · 覆盖提醒</span><div class="confl"><div class="h"><svg class="ico" style="color:var(--danger)"><use href="#i-alert"/></svg> 同一文件被先后修改</div><p><b>${g.a}</b> 与 <b>${g.b}</b> 都改了 <code>${g.f}</code>，${g.x}</p><div style="display:flex; gap:8px"><button class="btn" onclick="toast('并排显示两个版本的差异')">查看差异</button><button class="btn" onclick="toast('把被覆盖的改动恢复为一个新文件，交主策划合并')">恢复被覆盖版本</button></div></div></span></div>`;
+    else if(g.t==="typing"){ const o=M[g.m]; h += `<div class="typing">${avatar(g.m)}<span>${o.name} 正在输入</span><span class="balls"><i></i><i></i><i></i></span></div>`; }
+  }
+  stream.innerHTML = h; stream.scrollTop = stream.scrollHeight;
+}
+
+document.addEventListener("click", e => {
+  const ch = e.target.closest("[data-ch]");
+  if(ch){ cur = ch.dataset.ch;
+    document.querySelectorAll("[data-ch]").forEach(b=>b.classList.toggle("on", b===ch));
+    ch.querySelector(".unread")?.remove();
+    $("#chTitle").textContent = CH[cur].title; $("#chDesc").textContent = CH[cur].desc; $("#targetPill").textContent = CH[cur].pill;
+    $("#fusePill").style.display = cur==="group" ? "" : "none";
+    render(); return; }
+  const mem = e.target.closest("[data-mem]");
+  if(mem){ openDrawer(mem.dataset.mem); return; }
+  const rc = e.target.closest("[data-rc]");
+  if(rc && e.target.tagName==="BUTTON"){ rc.classList.toggle("open"); e.target.textContent = rc.classList.contains("open")?"收起":"展开"; return; }
+  const ap = e.target.closest("[data-approve]");
+  if(ap && e.target.classList.contains("btn")){ const t=e.target.textContent; ap.innerHTML = `<button class="btn done">✓ ${t==="拒绝"?"已拒绝":"已允许，脚本运行中"}</button>`; return; }
+  if(e.target.dataset.roll){ $("#modalBg").classList.add("open"); return; }
+  if(e.target.dataset.reset){ toast("整体回退：撤销这一刻之后的所有轮次，弹窗会列出受影响的成员和文件"); return; }
+});
+
+function openDrawer(k){ const o=M[k];
+  $("#dAv").style.background=o.cs; $("#dAv").style.color=o.c; $("#dAv").textContent=o.av;
+  $("#dName").textContent=o.name; $("#dEngine").textContent=o.engine; $("#dModel").textContent=o.model;
+  const pct = k==="zhu"?62:k==="shu"?31:18;
+  setRing(pct);
+  $("#dDm").onclick = ()=>{ $("#drawer").classList.remove("open"); document.querySelector(`[data-ch="dm-${k}"]`).click(); };
+  $("#drawer").classList.add("open");
+}
+function setRing(pct){ const c = 2*Math.PI*27; $("#ringVal").setAttribute("stroke-dasharray", `${c*pct/100} ${c}`);
+  $("#ringVal").style.stroke = pct>75?"var(--danger)":pct>55?"var(--warn)":"var(--ok)";
+  $("#ctxPct").textContent = pct+"%"; }
+$("#drawerClose").onclick = ()=> $("#drawer").classList.remove("open");
+$("#compactBtn").onclick = ()=>{ setRing(21); toast("已发送压缩指令，历史对话被摘要归档，占用降至 21%"); };
+
+$("#mCancel").onclick = ()=> $("#modalBg").classList.remove("open");
+$("#mOk").onclick = ()=>{ $("#modalBg").classList.remove("open");
+  msgs.group.push({t:"sys", x:"已撤销快照 #14 那一轮的 2 个文件改动 · 其他成员的改动全部保留"});
+  msgs.group.push({t:"me", x:"【系统代发 · 更正声明】数值程序那一轮的产出已撤销，签到奖励表 v1 作废，其余文件不受影响，请全员以当前工作区为准。"});
+  cur="group"; render(); toast("已撤销该轮改动，并向全员广播更正声明"); };
+
+$("#quickBtn").onclick = e=>{ const p=$("#qpop"); const r=e.target.getBoundingClientRect();
+  p.style.left=Math.max(8,r.left-20)+"px"; p.style.bottom=(innerHeight-r.top+10)+"px"; p.classList.toggle("open"); e.stopPropagation(); };
+document.addEventListener("click", e=>{ if(!e.target.closest("#qpop")) $("#qpop").classList.remove("open"); });
+$("#qpop").addEventListener("click", e=>{ if(e.target.dataset.q){ $("#input").value=e.target.dataset.q; $("#qpop").classList.remove("open"); $("#input").focus(); } });
+
+function send(){ const v=$("#input").value.trim(); if(!v) return;
+  msgs[cur].push({t:"me", x:v}); $("#input").value=""; render();
+  if(cur==="group"){ setTimeout(()=>{ msgs.group.push({t:"receipt", x:"数值程序、美术 已收到", d:"数值程序：[收到]\n美术：[收到]"}); render(); }, 600);
+    setTimeout(()=>{ msgs.group.push({t:"agent", m:"zhu", x:"收到，我来安排。（原型演示回复）"}); render(); }, 1400); }
+  else { const k=cur.replace("dm-",""); if(M[k]) setTimeout(()=>{ msgs[cur].push({t:"agent", m:k, x:"收到，这条只有我们俩知道。（原型演示回复）"}); render(); }, 900); } }
+$("#sendBtn").onclick = send;
+$("#input").addEventListener("keydown", e=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); send(); } });
+
+let toastTimer;
+function toast(x){ const t=$("#toast"); t.textContent=x; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"), 2600); }
+
+$("#themeBtn").onclick = ()=>{ const r=document.documentElement;
+  const dark = r.dataset.theme ? r.dataset.theme==="dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  r.dataset.theme = dark ? "light" : "dark"; };
+
+render();
+</script>
