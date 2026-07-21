@@ -159,7 +159,7 @@ function init(api) {
     return execFileSync('git', ['-C', cwd, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
   }
   // isRepo 挡在每次注入的 startTurn 热路径上，而它对同一路径是不变量——缓存住，别每次都 spawn git（Windows 下单次 40-120ms）
-  // 只有 gitInit() 会改变它；外部手动 git init 的边缘情况重启黑窗口即可
+  // 只有 gitInit() 会改变它；外部手动 git init 的边缘情况重启服务器即可
   const repoOk = new Map(); // path -> bool
   function isRepo(p) {
     if (!repoOk.has(p)) { let v; try { git(p, ['rev-parse', '--is-inside-work-tree']); v = true; } catch { v = false; } repoOk.set(p, v); }

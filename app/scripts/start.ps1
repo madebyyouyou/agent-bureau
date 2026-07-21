@@ -26,7 +26,7 @@ $url = "http://127.0.0.1:4000/plugins/kaifabuqun/index.html"
 $lockPath = "$env:USERPROFILE\.clideck\server.lock"
 $running = $false
 if (Test-Path $lockPath) {
-  # "在运行"以端口真能连上为准——进程号会被 Windows 回收复用，黑窗口异常关闭留下的残锁
+  # "在运行"以端口真能连上为准——进程号会被 Windows 回收复用，服务器窗口异常关闭留下的残锁
   # 仅检查可能被复用的进程号会误判，因此还需验证锁文件记录的端口确实可连接。
   try {
     $lock = Get-Content $lockPath -Raw | ConvertFrom-Json
@@ -47,7 +47,7 @@ if ($running) {
   Start-Process $url
 } else {
   Write-Host "正在启动开发部群工作台……几秒后自动打开浏览器。"
-  Write-Host "这个黑窗口是服务器本体，使用期间请别关；下班直接关窗口即可。"
+  Write-Host "这个窗口是服务器本体，使用期间请勿关闭；结束使用时直接关闭窗口即可。"
   # 轮询到服务器真正就绪（端口可连）再开浏览器，最多等 3 分钟——防止敲门太早吃闭门羹
   $null = Start-Job -ScriptBlock { param($u)
     for ($i = 0; $i -lt 90; $i++) {

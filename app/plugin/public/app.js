@@ -2,7 +2,7 @@
 (function () {
   const $ = s => document.querySelector(s);
   const P = 'plugin.kaifabuqun.';
-  const EXPECT = '0.6.2'; // 服务端插件应有的版本；不一致说明黑窗口还在跑旧代码
+  const EXPECT = '0.6.2'; // 服务端插件应有的版本；不一致说明服务器还在跑旧代码
   const COLORS = ['zhu', 'shu', 'mei'];
 
   const st = {
