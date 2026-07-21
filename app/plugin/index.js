@@ -16,7 +16,7 @@ const { execFileSync, execFile } = require('child_process');
 const kfq = require('./kfq-spawn.js'); // packs 路径/消毒的唯一权威（补丁7 在上游 require 同一份）
 
 const DATA = kfq.DATA;
-const VERSION = '0.6.1'; // 与前端 app.js 的 EXPECT 保持一致；服务端要重启才生效
+const VERSION = '0.6.2'; // 与前端 app.js 的 EXPECT 保持一致；服务端要重启才生效
 
 const SETTLE = 7000;                 // 收工后等落稿的静默期（codex 的稿子晚到 2~6 秒）
 const PROC_TIMEOUT = 15 * 60 * 1000; // 消化阶段单人超时：标 ⏱ 后放行整轮
@@ -741,7 +741,9 @@ function init(api) {
     } catch {}
   }
   // 补丁7 落位标记（启动器打补丁成功时写、失败时删；服务器启动前已定案，读一次即可）。
-  // 标记在 + claude/codex 席 + 有档案有包 = 章程已在系统提示层 → 压缩补发/接续补发/入职全文都可省
+  // 标记在 + claude/codex 席 + kfq-spawn 这次真挂上了旗（回执在）= 章程已在系统提示层
+  // → 压缩补发/接续补发/入职全文都可省。回执由 apply() 每次 spawn 现写现删：v0.6.1 只看
+  // 「补丁装没装 + 包在不在」，旗被 cmd.exe 绞碎时门控仍报 true，三处兜底全省 → 席位裸奔。
   const SPAWN_OK = fs.existsSync(path.join(DATA, 'spawn-patch.ok'));
   function flagInjected(id) {
     if (!SPAWN_OK) return false;
@@ -749,7 +751,7 @@ function init(api) {
     if (!s || !s.projectId || (s.presetId !== 'claude-code' && s.presetId !== 'codex')) return false;
     const g = loadGroup(s.projectId);
     if (!g || g.legacy || !(g.members || []).some(m => m.seatName === s.name)) return false;
-    return fs.existsSync(kfq.packPath(s.projectId, s.name));
+    return fs.existsSync(kfq.flagPath(s.projectId, s.name));
   }
 
   // 补发章程：上下文压缩后 / 重开会话后 / 老板手动触发 / 章程更新群发（带 mid 时回执吸附到对应系统线）。

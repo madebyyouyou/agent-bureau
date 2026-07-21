@@ -1,7 +1,7 @@
 {
   "id": "kaifabuqun",
   "name": "开发部群",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "author": "YouYou",
   "description": "跨模型 AI 开发团队群聊：串行发言权 + 双通道信封、自动已读回执、熔断、git 快照按轮撤销。界面在 /plugins/kaifabuqun/index.html",
   "settings": [

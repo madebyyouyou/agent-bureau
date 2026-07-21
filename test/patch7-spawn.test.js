@@ -26,6 +26,30 @@ function seed(group) {
   fs.writeFileSync(kfq.packPath(PID, SEAT), PACK);
 }
 
+// 假的 npm 壳子（照抄真机格式）：让「绕开 cmd.exe」的认路逻辑可确定性验证，
+// 不依赖跑测机器上究竟装没装 claude/codex、装在哪。PATH 一换 realTarget 就重新认路。
+const BIN = fs.mkdtempSync(path.join(os.tmpdir(), 'kfq-bin-'));
+const FAKE = {
+  claudeExe: path.join(BIN, 'node_modules', '@anthropic-ai', 'claude-code', 'bin', 'claude.exe'),
+  codexJs: path.join(BIN, 'node_modules', '@openai', 'codex', 'bin', 'codex.js'),
+  nodeExe: path.join(BIN, 'node.exe'),
+};
+(function buildFakeShims() {
+  for (const f of Object.values(FAKE)) { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, ''); }
+  fs.writeFileSync(path.join(BIN, 'claude.cmd'),
+    '@ECHO off\r\nGOTO start\r\n:find_dp0\r\nSET dp0=%~dp0\r\nEXIT /b\r\n:start\r\nSETLOCAL\r\nCALL :find_dp0\r\n'
+    + '"%dp0%\\node_modules\\@anthropic-ai\\claude-code\\bin\\claude.exe"   %*\r\n');
+  fs.writeFileSync(path.join(BIN, 'codex.cmd'),
+    '@ECHO off\r\nGOTO start\r\n:find_dp0\r\nSET dp0=%~dp0\r\nEXIT /b\r\n:start\r\nSETLOCAL\r\nCALL :find_dp0\r\n'
+    + 'IF EXIST "%dp0%\\node.exe" (\r\n  SET "_prog=%dp0%\\node.exe"\r\n) ELSE (\r\n  SET "_prog=node"\r\n)\r\n'
+    + 'endLocal & goto #_undefined_# 2>NUL || title %COMSPEC% & "%_prog%"  "%dp0%\\node_modules\\@openai\\codex\\bin\\codex.js" %*\r\n');
+})();
+function withFakeShims(fn) {
+  const saved = process.env.PATH;
+  process.env.PATH = BIN;                 // 只留假壳子，真机装没装都不影响
+  try { return fn(); } finally { process.env.PATH = saved; }
+}
+
 test('kfq-spawn.apply：参数改写矩阵', async t => {
   seed({ name: 'g', members: [{ seatName: SEAT }] });
 
@@ -66,10 +90,12 @@ test('kfq-spawn.apply：参数改写矩阵', async t => {
     assert.equal(JSON.parse(r.parts[2].slice('developer_instructions='.length)), PACK);
     assert.deepEqual(r.parts.slice(3), ['resume', 'tok-3']);
   });
-  await t.test('win cmd /c 包裹：插旗越过包裹层', function () {
+  await t.test('win cmd /c 包裹：插旗越过包裹层，并把包裹层换成真身', function () {
     if (process.platform !== 'win32') return; // commandStart 的 win 分支
-    const r = kfq.apply(['cmd.exe', '/c', 'claude'], 'claude-code', PID, SEAT);
-    assert.deepEqual(r.parts, ['cmd.exe', '/c', 'claude', '--append-system-prompt', PACK]);
+    withFakeShims(() => {
+      const r = kfq.apply(['cmd.exe', '/c', 'claude'], 'claude-code', PID, SEAT);
+      assert.deepEqual(r.parts, [FAKE.claudeExe, '--append-system-prompt', PACK]);
+    });
   });
   await t.test('非 claude/codex 引擎：原样放行（走 in-band 兜底）', () => {
     const parts = ['gemini'];
@@ -93,6 +119,82 @@ test('kfq-spawn.apply：参数改写矩阵', async t => {
     const r = kfq.apply(['claude', '--append-system-prompt', GUIDE], 'claude-code', PID, SEAT);
     assert.deepEqual(r.parts, ['claude', '--append-system-prompt', GUIDE]);
     seed({ name: 'g', members: [{ seatName: SEAT }] }); // 还原
+  });
+});
+
+// v0.6.2 事故修复：章程含 <group_message>、22 个引号、134 个换行，过不了 cmd.exe 命令行
+// （只认双引号、< > 当重定向、遇真换行即截断）——codex 退码 1 暴毙、claude 只剩第一行。
+test('绕开 cmd.exe：把 cmd /c 包裹层换成真身', async t => {
+  if (process.platform !== 'win32') return; // commandStart 只在 win 认包裹
+  seed({ name: 'g', members: [{ seatName: SEAT }] });
+
+  await t.test('codex 壳子 → [node.exe, codex.js]，旗与 resume 参数相对顺序不变', () => {
+    withFakeShims(() => {
+      const r = kfq.apply(['cmd.exe', '/c', 'codex', '-c', 'developer_instructions=' + JSON.stringify(GUIDE), 'resume', 'tok-9'], 'codex', PID, SEAT);
+      assert.deepEqual(r.parts.slice(0, 2), [FAKE.nodeExe, FAKE.codexJs]);
+      assert.equal(r.parts[2], '-c');
+      assert.equal(JSON.parse(r.parts[3].slice('developer_instructions='.length)), GUIDE + '\n\n' + PACK);
+      assert.deepEqual(r.parts.slice(4), ['resume', 'tok-9']);
+      assert.ok(!r.parts.some(p => /cmd(\.exe)?$/i.test(String(p))), 'cmd.exe 必须彻底出局');
+    });
+  });
+  await t.test('claude 壳子 → [claude.exe]（壳子直指 exe，不经 node）', () => {
+    withFakeShims(() => {
+      const r = kfq.apply(['cmd.exe', '/c', 'claude', '--append-system-prompt', GUIDE, '--resume', 'tok-8'], 'claude-code', PID, SEAT);
+      assert.deepEqual(r.parts, [FAKE.claudeExe, '--append-system-prompt', GUIDE + '\n\n' + PACK, '--resume', 'tok-8']);
+    });
+  });
+  await t.test('GLM/DeepSeek 中转席（claude + --settings）：同样绕开', () => {
+    withFakeShims(() => {
+      const r = kfq.apply(['cmd.exe', '/c', 'claude', '--settings', 'C:\\config\\relay.json'], 'claude-code', PID, SEAT);
+      assert.deepEqual(r.parts, [FAKE.claudeExe, '--append-system-prompt', PACK, '--settings', 'C:\\config\\relay.json']);
+    });
+  });
+  await t.test('认不出真身（PATH 里没这命令）：放弃挂旗，退回 in-band 兜底', () => {
+    const saved = process.env.PATH;
+    process.env.PATH = BIN;
+    try {
+      const parts = ['cmd.exe', '/c', 'mystery-cli', '-c', 'developer_instructions=' + JSON.stringify(GUIDE)];
+      const r = kfq.apply(parts, 'codex', PID, SEAT);
+      assert.deepEqual(r.parts, parts, '认不出就必须原样退回，绝不挂残旗');
+      assert.deepEqual(r.env, {});
+    } finally { process.env.PATH = saved; }
+  });
+});
+
+// 回执＝index.js 省不省 in-band 兜底的唯一依据。v0.6.1 的门控只看「补丁装没装＋包在不在」，
+// 旗被 cmd.exe 绞碎时仍报 true，三处兜底全省 → 四个席位裸奔。回执必须每次 spawn 现写现删。
+test('挂旗回执：挂上才写，放弃就删', async t => {
+  seed({ name: 'g', members: [{ seatName: SEAT }] });
+  const receipt = () => fs.existsSync(kfq.flagPath(PID, SEAT));
+
+  await t.test('挂上 → 写回执', () => {
+    fs.rmSync(kfq.flagPath(PID, SEAT), { force: true });
+    kfq.apply(['claude', '--append-system-prompt', GUIDE], 'claude-code', PID, SEAT);
+    assert.ok(receipt(), '挂上了却没写回执 → index.js 会白发一遍章程（可容忍）');
+  });
+  await t.test('用户整套 --system-prompt 不掺和 → 删回执', () => {
+    kfq.apply(['claude', '--system-prompt', '自定义'], 'claude-code', PID, SEAT);
+    assert.ok(!receipt(), '没挂旗却留着回执 → 席位裸奔（不可容忍）');
+  });
+  await t.test('绕不开 cmd.exe → 删回执', function () {
+    if (process.platform !== 'win32') return;
+    kfq.apply(['claude', '--append-system-prompt', GUIDE], 'claude-code', PID, SEAT); // 先写上
+    assert.ok(receipt());
+    const saved = process.env.PATH;
+    process.env.PATH = BIN;
+    try {
+      kfq.apply(['cmd.exe', '/c', 'mystery-cli'], 'claude-code', PID, SEAT);
+      assert.ok(!receipt(), '认不出真身＝章程注定被绞碎，必须删回执让 in-band 接手');
+    } finally { process.env.PATH = saved; }
+  });
+  await t.test('章程包空 → 删回执', () => {
+    kfq.apply(['claude', '--append-system-prompt', GUIDE], 'claude-code', PID, SEAT); // 先写上
+    fs.writeFileSync(kfq.packPath(PID, SEAT), '   ');
+    try {
+      kfq.apply(['claude', '--append-system-prompt', GUIDE], 'claude-code', PID, SEAT);
+      assert.ok(!receipt());
+    } finally { fs.writeFileSync(kfq.packPath(PID, SEAT), PACK); }
   });
 });
 
