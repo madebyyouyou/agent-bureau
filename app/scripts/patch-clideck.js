@@ -96,21 +96,64 @@ function patch4Retire(src) {
 
 // ---------- 补丁7：席位章程包拼进系统提示旗 ----------
 // spawnSession 是建群/接续/重启/换脑唯一的 spawn 汇合点，且此处 projectId 与会话名（=席位名）齐备。
-// 变换做三件事：算出 kfq 改写结果（真正的逻辑在插件目录 kfq-spawn.js，随 robocopy 更新、无需重打补丁）、
-// 用改写后的参数 spawn、把 KFQ_GROUP/KFQ_SEAT/KFQ_CHARTER 并进子进程环境。任何失败原样放行。
-const P7_MARK = '/*kfq-seat-charter*/';
+// 变换做四件事：算出 kfq 改写结果（真正的逻辑在插件目录 kfq-spawn.js，随 robocopy 更新）、
+// 用改写后的参数 spawn、并入席位环境、只在 pty.spawn 成功后提交回执。任何失败原样放行并撤销回执。
+const P7_MARK = '/*kfq-seat-charter@v2*/';
+const P7_OLD_MARK = '/*kfq-seat-charter*/';
 function patch7Sessions(src) {
   if (src.includes(P7_MARK)) return null;
   const a1 = 'const extraEnv = commandEnv(cmd);';
   const a2 = 'term = pty.spawn(launchParts[0], launchParts.slice(1), {';
   const a3 = 'env: { ...process.env, ...extraEnv, ...telemetryEnv, ...colorEnv },';
-  if (!src.includes(a1) || !src.includes(a2) || !src.includes(a3)) return undefined;
+  const oldA2 = 'term = pty.spawn(kfq.parts[0], kfq.parts.slice(1), {';
+  const oldA3 = 'env: { ...process.env, ...extraEnv, ...telemetryEnv, ...colorEnv, ...kfq.env },';
+  const a4 = '    });\n  } catch (e) {\n    return e;\n  }';
+  const withReceipt = '    });\n    try { kfq.commit?.(); } catch {}\n  } catch (e) {\n    try { kfq.rollback?.(); } catch {}\n    return e;\n  }';
+  if (src.includes(P7_OLD_MARK)) {
+    if (!src.includes(oldA2) || !src.includes(oldA3) || !src.includes(a4)) return undefined;
+    return src.replace(P7_OLD_MARK, P7_MARK).replace(a4, () => withReceipt);
+  }
+  if (!src.includes(a1) || !src.includes(a2) || !src.includes(a3) || !src.includes(a4)) return undefined;
   const inject = a1 + '\n  ' + P7_MARK + ' // 开发部群补丁7：席位章程包拼进系统提示旗（逻辑见插件目录 kfq-spawn.js）\n'
-    + '  let kfq = { parts: launchParts, env: {} };\n'
+    + '  let kfq = { parts: launchParts, env: {}, commit() {}, rollback() {} };\n'
     + "  try { kfq = require(require('path').join(require('os').homedir(), '.clideck', 'plugins', 'kaifabuqun', 'kfq-spawn.js')).apply(launchParts, preset?.presetId, projectId, name); } catch {}";
   return src.replace(a1, () => inject)
     .replace(a2, () => 'term = pty.spawn(kfq.parts[0], kfq.parts.slice(1), {')
-    .replace(a3, () => 'env: { ...process.env, ...extraEnv, ...telemetryEnv, ...colorEnv, ...kfq.env },');
+    .replace(a3, () => 'env: { ...process.env, ...extraEnv, ...telemetryEnv, ...colorEnv, ...kfq.env },')
+    .replace(a4, () => withReceipt);
+}
+
+// ---------- 补丁1：Windows CLI 版本探测 ----------
+// Node 24 弃用 shell:true + args（DEP0190）。Windows 改用 execSync 的完整、已校验命令串；
+// 非 Windows 仍保留 execFileSync 的 argv 调用。旧版标记会被整段替换为 v2。
+const P1_MARK = '/*kfq-win-probe@v2*/';
+const P1_OPTS = "{ encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }";
+const P1_OLD_OPTS = "/*kfq-win-probe*/{ encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], shell: process.platform === 'win32' }";
+const P1_ORIG = `function getInstalledVersion(bin) {
+  try { return parseVersion(execFileSync(bin, ['--version'], ${P1_OPTS})); } catch {}
+  try { return parseVersion(execFileSync(bin, ['-v'], ${P1_OPTS})); } catch {}
+  return '';
+}`;
+function patch1Probe(src) {
+  if (src.includes(P1_MARK)) return null;
+  const re = /function getInstalledVersion\(bin\) \{[\s\S]*?\n\}/;
+  const block = src.match(re)?.[0];
+  if (!block) return undefined;
+  const oldNormalized = block.split(P1_OLD_OPTS).join(P1_OPTS);
+  if (block !== P1_ORIG && oldNormalized !== P1_ORIG) return undefined;
+  const fixed = `function getInstalledVersion(bin) {
+  ${P1_MARK}
+  const run = flag => {
+    const opts = { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] };
+    if (process.platform !== 'win32') return execFileSync(bin, [flag], opts);
+    if (!/^[A-Za-z0-9_.-]+$/.test(bin)) return '';
+    return require('child_process').execSync(\`\${bin} \${flag}\`, opts);
+  };
+  try { return parseVersion(run('--version')); } catch {}
+  try { return parseVersion(run('-v')); } catch {}
+  return '';
+}`;
+  return src.replace(re, () => fixed);
 }
 
 function main() {
@@ -120,22 +163,16 @@ function main() {
   if (!root || !fs.existsSync(file)) { console.error('[patch] 找不到已安装的 clideck：' + file); process.exit(2); }
 
   // 补丁1：CliDeck 在 Windows 上的版本探测——execFileSync 不带 shell 执行不了 npm 的 .cmd 命令，
-  // 导致 claude/codex 版本永远读不到 → "Update required" 误报 → 遥测开关被强制关闭 → Codex 席成哑巴。
+  // 导致版本永远读不到；v2 同时避开 Node 24 的 shell:true + args 弃用与注入风险。
   let src = fs.readFileSync(file, 'utf8');
-  const MARK = '/*kfq-win-probe*/';
-  if (src.includes(MARK)) {
+  const r1Probe = patch1Probe(src);
+  if (r1Probe === null) {
     console.log('[patch] 版本探测补丁已在，跳过');
+  } else if (r1Probe === undefined) {
+    console.error('[patch] 版本探测补丁失败：目标代码变了（clideck 升级？）');
   } else {
-    const head = src.indexOf('function getInstalledVersion');
-    const tail = head >= 0 ? src.indexOf('}', src.indexOf("return '';", head)) : -1;
-    const OPTS = "{ encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }";
-    if (head < 0 || tail < 0 || !src.slice(head, tail + 1).includes(OPTS)) {
-      console.error('[patch] 版本探测补丁失败：目标代码变了（clideck 升级？）');
-    } else {
-      const fixed = src.slice(head, tail + 1).split(OPTS).join(MARK + "{ encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], shell: process.platform === 'win32' }");
-      fs.writeFileSync(file, src.slice(0, head) + fixed + src.slice(tail + 1));
-      console.log('[patch] 已修补版本探测（Windows shell 模式）：' + file);
-    }
+    fs.writeFileSync(file, r1Probe);
+    console.log('[patch] 已修补版本探测（Windows 安全 shell 模式）：' + file);
   }
 
   // 补丁2：codex 钩子命令在 Windows 上需要 PowerShell 调用符 & 前缀，否则 exit 1
@@ -240,5 +277,5 @@ function main() {
   }
 }
 
-module.exports = { patch4Retire, patch6Candidate, patch6Handlers, patch7Sessions };
+module.exports = { patch1Probe, patch4Retire, patch6Candidate, patch6Handlers, patch7Sessions };
 if (require.main === module) main();

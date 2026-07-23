@@ -49,3 +49,17 @@ test('公开安装说明固定到补丁回归所验证的 CliDeck 版本', () =>
   assert.doesNotMatch(readme, /版本守卫|升级自动补/);
   assert.doesNotMatch(auditSummary, /版本守卫|版本探测/);
 });
+
+test('源码与锚点测试固定使用 LF，避免 Windows 检出破坏补丁匹配', () => {
+  const attrs = fs.readFileSync(path.join(root, '.gitattributes'), 'utf8');
+  const critical = [
+    path.join(root, 'app', 'plugin', 'kfq-spawn.js'),
+    path.join(root, 'app', 'scripts', 'patch-clideck.js'),
+    path.join(root, 'test', 'patch7-spawn.test.js'),
+  ];
+
+  assert.match(attrs, /^\* text=auto eol=lf$/m);
+  for (const file of critical) {
+    assert.doesNotMatch(fs.readFileSync(file, 'utf8'), /\r\n/, `${path.relative(root, file)} 不是 LF`);
+  }
+});

@@ -1,7 +1,7 @@
 {
   "name": "kaifabuqun",
   "private": true,
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "开发部群 — 跨模型 AI 开发团队的群聊插件（运行时 = 全局安装的 CliDeck 加载 app/plugin；启动入口 app/scripts/start.ps1。vendor/clideck 是上游参考副本，见其 LICENSE）",
   "scripts": {
     "test": "node --test \"test/*.test.js\""

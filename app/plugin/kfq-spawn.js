@@ -17,8 +17,8 @@ const safeId = pid => String(pid).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64);
 const seatFile = name => String(name).replace(/[\\/:*?"<>|\x00-\x1f\s]/g, '_').slice(0, 60) + '.md';
 const packDir = pid => path.join(DATA, 'packs', safeId(pid));
 const packPath = (pid, name) => path.join(packDir(pid), seatFile(name));
-// 挂旗回执：apply() 真挂上才写、放弃就删。index.js 的 flagInjected 读它决定是否省掉 in-band
-// 兜底——门控必须看「这次 spawn 到底挂没挂」，不能只看补丁装没装（v0.6.1 假阳性事故）。
+// spawn 回执：apply() 只准备 argv；上游 pty.spawn 成功返回后才 commit，异常则 rollback。
+// index.js 的 flagInjected 读它决定是否省掉 in-band 兜底，不能只看补丁装没装（v0.6.1 假阳性事故）。
 const flagDir = pid => path.join(DATA, 'flags', safeId(pid));
 const flagPath = (pid, name) => path.join(flagDir(pid), seatFile(name));
 function markFlag(pid, name, mode) {
@@ -43,10 +43,17 @@ function commandStart(parts) {
 // 走正规 argv 传参，cmd 那套解析彻底不参与。认不出真身就不挂旗，交给 in-band 兜底。
 const shimCache = new Map();
 function whichFile(name) {
+  const hasExt = !!path.extname(name);
+  const exts = hasExt ? [''] : String(process.env.PATHEXT || '.COM;.EXE;.BAT;.CMD')
+    .split(';')
+    .map(ext => ext.trim())
+    .filter(Boolean)
+    .map(ext => ext.startsWith('.') ? ext : '.' + ext);
   for (const dir of String(process.env.PATH || '').split(path.delimiter)) {
     if (!dir) continue;
-    for (const ext of ['.cmd', '.exe', '.bat']) {
-      const p = path.join(dir, name + ext);
+    const cleanDir = dir.replace(/^"(.*)"$/, '$1');
+    for (const ext of exts) {
+      const p = path.join(cleanDir, name + ext);
       try { if (fs.statSync(p).isFile()) return p; } catch {}
     }
   }
@@ -54,12 +61,13 @@ function whichFile(name) {
 }
 // 返回替换 ['cmd.exe','/c','<命令>'] 的真身前缀：[claude.exe] 或 [node.exe, codex.js]；认不出→null
 function realTarget(cmdName) {
-  const key = cmdName + '\0' + (process.env.PATH || ''); // PATH 变了就重新认路（也让单测能换假壳子）
+  // PATH 或 PATHEXT 任一变化都要重新认路；Windows 的无后缀命令优先级由两者共同决定。
+  const key = cmdName + '\0' + (process.env.PATH || '') + '\0' + (process.env.PATHEXT || '');
   if (shimCache.has(key)) return shimCache.get(key);
   let target = null;
   try {
     const shim = whichFile(cmdName);
-    if (shim && /\.exe$/i.test(shim)) target = [shim];           // 本来就是 exe，直说
+    if (shim && /\.(?:com|exe)$/i.test(shim)) target = [shim];  // 原生可执行文件，直接 spawn
     else if (shim && /\.cmd$/i.test(shim)) {
       const dp0 = path.dirname(shim);
       // npm 壳子真正的调用行永远带 %*（前面那些是 SETLOCAL/IF EXIST 的样板）
@@ -79,14 +87,14 @@ function realTarget(cmdName) {
   return target;
 }
 
-// spawn 参数改写：找不到席位/读不到章程包/引擎不支持 → 原样返回（in-band 注入兜底，绝不让开工位失败）
-// 凡是「决定不挂旗」的出口都要 clearFlag，凡是挂上的都要 markFlag——回执是 index.js 省不省
-// in-band 兜底的唯一依据，宁可多发一遍章程，也不能让席位以为有、其实没有。
+// spawn 参数改写：找不到席位/读不到章程包/引擎不支持 → 原样返回（in-band 注入兜底，绝不让开工位失败）。
+// 回执只证明 node-pty 已成功创建接受改写 argv 的进程，不声称 CLI 已消费提示内容；宁可少写回执而多补发。
 function apply(parts, presetId, projectId, seatName) {
-  const out = { parts, env: {} };
+  const out = { parts, env: {}, commit() {}, rollback() {} };
   const give = () => { clearFlag(projectId, seatName); return out; }; // 放弃挂旗（席位已认定）
   try {
     if (!Array.isArray(parts) || !projectId || !seatName) return out;
+    clearFlag(projectId, seatName); // 新一轮 spawn 开始即作废上一次回执，避免陈旧状态关闭兜底。
     if (presetId !== 'claude-code' && presetId !== 'codex') return out;
     const g = JSON.parse(fs.readFileSync(path.join(DATA, 'groups', safeId(projectId) + '.json'), 'utf8'));
     if (!g || g.legacy || !(g.members || []).some(m => m.seatName === seatName)) return out;
@@ -120,7 +128,8 @@ function apply(parts, presetId, projectId, seatName) {
     }
     out.parts = next;
     out.env = { KFQ_GROUP: String(projectId), KFQ_SEAT: String(seatName), KFQ_CHARTER: pp };
-    markFlag(projectId, seatName, mode);
+    out.commit = () => markFlag(projectId, seatName, mode);
+    out.rollback = () => clearFlag(projectId, seatName);
     return out;
   } catch { return give(); }
 }

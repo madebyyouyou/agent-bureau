@@ -33,6 +33,8 @@ const FAKE = {
   claudeExe: path.join(BIN, 'node_modules', '@anthropic-ai', 'claude-code', 'bin', 'claude.exe'),
   codexJs: path.join(BIN, 'node_modules', '@openai', 'codex', 'bin', 'codex.js'),
   nodeExe: path.join(BIN, 'node.exe'),
+  priorityExe: path.join(BIN, 'priority.exe'),
+  priorityCom: path.join(BIN, 'priority.com'),
 };
 (function buildFakeShims() {
   for (const f of Object.values(FAKE)) { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, ''); }
@@ -43,6 +45,8 @@ const FAKE = {
     '@ECHO off\r\nGOTO start\r\n:find_dp0\r\nSET dp0=%~dp0\r\nEXIT /b\r\n:start\r\nSETLOCAL\r\nCALL :find_dp0\r\n'
     + 'IF EXIST "%dp0%\\node.exe" (\r\n  SET "_prog=%dp0%\\node.exe"\r\n) ELSE (\r\n  SET "_prog=node"\r\n)\r\n'
     + 'endLocal & goto #_undefined_# 2>NUL || title %COMSPEC% & "%_prog%"  "%dp0%\\node_modules\\@openai\\codex\\bin\\codex.js" %*\r\n');
+  fs.writeFileSync(path.join(BIN, 'priority.cmd'),
+    '@ECHO off\r\n"%dp0%\\node_modules\\@anthropic-ai\\claude-code\\bin\\claude.exe" %*\r\n');
 })();
 function withFakeShims(fn) {
   const saved = process.env.PATH;
@@ -150,6 +154,27 @@ test('绕开 cmd.exe：把 cmd /c 包裹层换成真身', async t => {
       assert.deepEqual(r.parts, [FAKE.claudeExe, '--append-system-prompt', PACK, '--settings', 'C:\\config\\relay.json']);
     });
   });
+  await t.test('按 PATHEXT 顺序解析，并在 PATHEXT 变化后重新认路', () => {
+    withFakeShims(() => {
+      const saved = process.env.PATHEXT;
+      try {
+        process.env.PATHEXT = '.EXE;.CMD;.COM';
+        let r = kfq.apply(['cmd.exe', '/c', 'priority'], 'claude-code', PID, SEAT);
+        assert.equal(r.parts[0].toLowerCase(), FAKE.priorityExe.toLowerCase(), 'PATHEXT 指定 .EXE 优先时应选 exe');
+
+        process.env.PATHEXT = '.CMD;.COM;.EXE';
+        r = kfq.apply(['cmd.exe', '/c', 'priority'], 'claude-code', PID, SEAT);
+        assert.equal(r.parts[0], FAKE.claudeExe, 'PATHEXT 变化后应改选并解析 cmd 壳子');
+
+        process.env.PATHEXT = '.COM;.CMD;.EXE';
+        r = kfq.apply(['cmd.exe', '/c', 'priority'], 'claude-code', PID, SEAT);
+        assert.equal(r.parts[0].toLowerCase(), FAKE.priorityCom.toLowerCase(), 'Windows 默认支持的 .COM 不能被漏掉');
+      } finally {
+        if (saved === undefined) delete process.env.PATHEXT;
+        else process.env.PATHEXT = saved;
+      }
+    });
+  });
   await t.test('认不出真身（PATH 里没这命令）：放弃挂旗，退回 in-band 兜底', () => {
     const saved = process.env.PATH;
     process.env.PATH = BIN;
@@ -162,16 +187,20 @@ test('绕开 cmd.exe：把 cmd /c 包裹层换成真身', async t => {
   });
 });
 
-// 回执＝index.js 省不省 in-band 兜底的唯一依据。v0.6.1 的门控只看「补丁装没装＋包在不在」，
-// 旗被 cmd.exe 绞碎时仍报 true，三处兜底全省 → 四个席位裸奔。回执必须每次 spawn 现写现删。
-test('挂旗回执：挂上才写，放弃就删', async t => {
+// 回执＝index.js 省不省 in-band 兜底的唯一依据。apply 只准备 argv；必须等 pty.spawn 成功返回后
+// 才能确认子进程接受了改写参数。否则 spawn 抛错时仍留下回执，会错误关闭兜底。
+test('spawn 回执：进程创建成功后才写，放弃或失败就删', async t => {
   seed({ name: 'g', members: [{ seatName: SEAT }] });
   const receipt = () => fs.existsSync(kfq.flagPath(PID, SEAT));
 
-  await t.test('挂上 → 写回执', () => {
+  await t.test('apply 只准备参数；commit 后才写回执', () => {
     fs.rmSync(kfq.flagPath(PID, SEAT), { force: true });
-    kfq.apply(['claude', '--append-system-prompt', GUIDE], 'claude-code', PID, SEAT);
-    assert.ok(receipt(), '挂上了却没写回执 → index.js 会白发一遍章程（可容忍）');
+    const r = kfq.apply(['claude', '--append-system-prompt', GUIDE], 'claude-code', PID, SEAT);
+    assert.equal(receipt(), false, '尚未 spawn 成功，不得提前关闭 in-band 兜底');
+    r.commit();
+    assert.ok(receipt(), 'pty.spawn 成功后应写回执');
+    r.rollback();
+    assert.equal(receipt(), false, 'spawn 失败路径应能撤销回执');
   });
   await t.test('用户整套 --system-prompt 不掺和 → 删回执', () => {
     kfq.apply(['claude', '--system-prompt', '自定义'], 'claude-code', PID, SEAT);
@@ -179,7 +208,7 @@ test('挂旗回执：挂上才写，放弃就删', async t => {
   });
   await t.test('绕不开 cmd.exe → 删回执', function () {
     if (process.platform !== 'win32') return;
-    kfq.apply(['claude', '--append-system-prompt', GUIDE], 'claude-code', PID, SEAT); // 先写上
+    kfq.apply(['claude', '--append-system-prompt', GUIDE], 'claude-code', PID, SEAT).commit(); // 先写上
     assert.ok(receipt());
     const saved = process.env.PATH;
     process.env.PATH = BIN;
@@ -189,7 +218,7 @@ test('挂旗回执：挂上才写，放弃就删', async t => {
     } finally { process.env.PATH = saved; }
   });
   await t.test('章程包空 → 删回执', () => {
-    kfq.apply(['claude', '--append-system-prompt', GUIDE], 'claude-code', PID, SEAT); // 先写上
+    kfq.apply(['claude', '--append-system-prompt', GUIDE], 'claude-code', PID, SEAT).commit(); // 先写上
     fs.writeFileSync(kfq.packPath(PID, SEAT), '   ');
     try {
       kfq.apply(['claude', '--append-system-prompt', GUIDE], 'claude-code', PID, SEAT);
@@ -200,6 +229,12 @@ test('挂旗回执：挂上才写，放弃就删', async t => {
 
 test('patch7Sessions：vendor 副本变换与幂等', async t => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'vendor', 'clideck', 'sessions.js'), 'utf8');
+  const oldPatched = src
+    .replace('const extraEnv = commandEnv(cmd);', () => 'const extraEnv = commandEnv(cmd);\n  /*kfq-seat-charter*/ // 开发部群补丁7：席位章程包拼进系统提示旗（逻辑见插件目录 kfq-spawn.js）\n'
+      + '  let kfq = { parts: launchParts, env: {} };\n'
+      + "  try { kfq = require(require('path').join(require('os').homedir(), '.clideck', 'plugins', 'kaifabuqun', 'kfq-spawn.js')).apply(launchParts, preset?.presetId, projectId, name); } catch {}")
+    .replace('term = pty.spawn(launchParts[0], launchParts.slice(1), {', 'term = pty.spawn(kfq.parts[0], kfq.parts.slice(1), {')
+    .replace('env: { ...process.env, ...extraEnv, ...telemetryEnv, ...colorEnv },', 'env: { ...process.env, ...extraEnv, ...telemetryEnv, ...colorEnv, ...kfq.env },');
   await t.test('三处锚点仍在 vendor（上游升级漂移预警）', () => {
     const out = patch7Sessions(src);
     assert.notEqual(out, undefined, '锚点丢失：sessions.js 结构变了');
@@ -208,9 +243,17 @@ test('patch7Sessions：vendor 副本变换与幂等', async t => {
     assert.match(out, /pty\.spawn\(kfq\.parts\[0\], kfq\.parts\.slice\(1\)/);
     assert.match(out, /\.\.\.colorEnv, \.\.\.kfq\.env \}/);
     assert.match(out, /kfq-spawn\.js/);
+    assert.match(out, /kfq\.commit\?\.\(\)/, 'pty.spawn 成功后必须提交回执');
+    assert.match(out, /kfq\.rollback\?\.\(\)/, 'pty.spawn 抛错时必须撤销回执');
   });
   await t.test('幂等：已打过 → null', () => {
     assert.equal(patch7Sessions(patch7Sessions(src)), null);
+  });
+  await t.test('升级：已安装的 v1 补丁会补上延迟回执，不会被旧标记跳过', () => {
+    const out = patch7Sessions(oldPatched);
+    assert.match(out, /kfq-seat-charter@v2/);
+    assert.match(out, /kfq\.commit\?\.\(\)/);
+    assert.match(out, /kfq\.rollback\?\.\(\)/);
   });
   await t.test('结构不符 → undefined（触发 in-band 降级标记删除）', () => {
     assert.equal(patch7Sessions('function nothing() {}'), undefined);
